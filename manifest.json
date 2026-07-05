@@ -4,12 +4,18 @@
   "version": "1.0.0",
   "description": "Capture and save screenshots of the current tab.",
   "permissions": ["activeTab", "scripting"],
-  "action": {
-    "default_popup": "popup/popup.html",
-    "default_icon": "icn.png",
-    "default_title": "QuickShot"
-  },
   "background": {
     "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": "assets/icn.png",
+    "default_title": "QuickShot"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
   }
 }

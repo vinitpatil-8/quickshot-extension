@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Node (if you ever add npm later)
+node_modules/
+
+# Build output
+dist/
+
+# Misc
+*.tmp
+*.swp

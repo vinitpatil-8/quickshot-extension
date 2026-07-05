@@ -1,178 +1,381 @@
-// ===== Disable page interaction =====
-const prevOverflow = document.documentElement.style.overflow;
-const prevUserSelect = document.documentElement.style.userSelect;
+(() => {
+  const existingCleanup = window.__quickShotCleanup;
 
-document.documentElement.style.overflow = "hidden";
-document.documentElement.style.userSelect = "none";
+  if (typeof existingCleanup === "function") {
+    existingCleanup();
+  }
 
-// ===== Interaction Layer =====
-const interaction = document.createElement("div");
+  const prevOverflow = document.documentElement.style.overflow;
+  const prevUserSelect = document.documentElement.style.userSelect;
 
-interaction.style.cssText = `
-position:fixed;
-inset:0;
-z-index:2147483646;
-cursor:crosshair;
-`;
+  document.documentElement.style.overflow = "hidden";
+  document.documentElement.style.userSelect = "none";
 
-document.body.appendChild(interaction);
+  const interaction = document.createElement("div");
 
-// ===== Selection Box =====
-const selection = document.createElement("div");
+  interaction.style.cssText = `
+  position:fixed;
+  inset:0;
+  z-index:2147483646;
+  cursor:crosshair;
+  `;
 
-selection.style.cssText = `
-position:fixed;
-display:none;
-box-sizing:border-box;
-border:2px dashed white;
-background:transparent;
-pointer-events:none;
-z-index:2147483648;
-`;
+  document.body.appendChild(interaction);
 
-document.body.appendChild(selection);
+  const selection = document.createElement("div");
 
-// ===== Overlays =====
-const overlays = [];
+  selection.style.cssText = `
+  position:fixed;
+  display:none;
+  box-sizing:border-box;
+  border:2px dashed white;
+  background:transparent;
+  pointer-events:none;
+  z-index:2147483648;
+  `;
 
-for (let i = 0; i < 4; i++) {
-  const div = document.createElement("div");
+  document.body.appendChild(selection);
 
-  div.style.cssText = `
-    position:fixed;
-    background:rgba(0,0,0,.65);
-    pointer-events:none;
-    z-index:2147483647;
-    `;
+  const overlays = [];
 
-  document.body.appendChild(div);
-  overlays.push(div);
-}
+  for (let i = 0; i < 4; i++) {
+    const div = document.createElement("div");
 
-const [topOverlay, leftOverlay, rightOverlay, bottomOverlay] = overlays;
+    div.style.cssText = `
+      position:fixed;
+      background:rgba(0,0,0,.65);
+      pointer-events:none;
+      z-index:2147483647;
+      `;
 
-// Initially darken whole page
-topOverlay.style.left = "0";
-topOverlay.style.top = "0";
-topOverlay.style.width = "100vw";
-topOverlay.style.height = "100vh";
+    document.body.appendChild(div);
+    overlays.push(div);
+  }
 
-let isSelecting = false;
-let startX = 0;
-let startY = 0;
+  const [topOverlay, leftOverlay, rightOverlay, bottomOverlay] = overlays;
 
-// ===== Mouse Down =====
-interaction.addEventListener("mousedown", (e) => {
-
-  e.preventDefault();
-
-  isSelecting = true;
-
-  startX = e.clientX;
-  startY = e.clientY;
-
-  selection.style.display = "block";
-
-});
-
-// ===== Mouse Move =====
-interaction.addEventListener("mousemove", (e) => {
-
-  if (!isSelecting) return;
-
-  e.preventDefault();
-
-  const currentX = e.clientX;
-  const currentY = e.clientY;
-
-  const left = Math.min(startX, currentX);
-  const top = Math.min(startY, currentY);
-  const width = Math.abs(currentX - startX);
-  const height = Math.abs(currentY - startY);
-
-  selection.style.left = left + "px";
-  selection.style.top = top + "px";
-  selection.style.width = width + "px";
-  selection.style.height = height + "px";
-
-  const W = window.innerWidth;
-  const H = window.innerHeight;
-
-  // TOP
   topOverlay.style.left = "0";
   topOverlay.style.top = "0";
-  topOverlay.style.width = W + "px";
-  topOverlay.style.height = top + "px";
+  topOverlay.style.width = "100vw";
+  topOverlay.style.height = "100vh";
 
-  // LEFT
-  leftOverlay.style.left = "0";
-  leftOverlay.style.top = top + "px";
-  leftOverlay.style.width = left + "px";
-  leftOverlay.style.height = height + "px";
+  let isSelecting = false;
+  let isActive = true;
+  let isReviewing = false;
+  let startX = 0;
+  let startY = 0;
+  let capturedImage = null;
 
-  // RIGHT
-  rightOverlay.style.left = (left + width) + "px";
-  rightOverlay.style.top = top + "px";
-  rightOverlay.style.width = (W - (left + width)) + "px";
-  rightOverlay.style.height = height + "px";
+  const hint = document.createElement("div");
+  const actionMenu = document.createElement("div");
+  const copyButton = document.createElement("button");
+  const downloadButton = document.createElement("button");
+  const cancelButton = document.createElement("button");
 
-  // BOTTOM
-  bottomOverlay.style.left = "0";
-  bottomOverlay.style.top = (top + height) + "px";
-  bottomOverlay.style.width = W + "px";
-  bottomOverlay.style.height = (H - (top + height)) + "px";
+  hint.textContent = "Press ESC to cancel";
+  hint.style.cssText = `
+  position:fixed;
+  top:16px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:8px 12px;
+  border-radius:999px;
+  background:rgba(24,24,27,.92);
+  color:#fafafa;
+  font:12px/1.2 system-ui,sans-serif;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  pointer-events:none;
+  z-index:2147483648;
+  `;
 
-});
+  document.body.appendChild(hint);
 
-// ===== Mouse Up =====
-interaction.addEventListener("mouseup", (e) => {
+  actionMenu.style.cssText = `
+  position:fixed;
+  display:none;
+  gap:6px;
+  padding:6px;
+  border-radius:999px;
+  background:rgba(24,24,27,.96);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  pointer-events:auto;
+  z-index:2147483648;
+  `;
 
-  if (!isSelecting) return;
+  [copyButton, downloadButton, cancelButton].forEach((button) => {
+    button.type = "button";
+    button.disabled = true;
+    button.style.cssText = `
+    border:0;
+    border-radius:999px;
+    padding:6px 10px;
+    background:#27272a;
+    color:#fafafa;
+    font:12px/1.2 system-ui,sans-serif;
+    cursor:pointer;
+    `;
+  });
 
-  e.preventDefault();
+  copyButton.textContent = "Copy";
+  downloadButton.textContent = "Download";
+  cancelButton.textContent = "Cancel";
+  cancelButton.disabled = false;
 
-  isSelecting = false;
+  actionMenu.append(copyButton, downloadButton, cancelButton);
+  document.body.appendChild(actionMenu);
 
-  const rect = selection.getBoundingClientRect();
+  function setButtonsDisabled(disabled) {
+    copyButton.disabled = disabled;
+    downloadButton.disabled = disabled;
+  }
 
-  chrome.runtime.sendMessage({
-    type: "capture",
-    x: rect.left,
-    y: rect.top,
-    width: rect.width,
-    height: rect.height
-  },
-    (response) => {
-      if (chrome.runtime.lastError) {
-        console.error(chrome.runtime.lastError);
-        return;
-      }
+  function positionActionMenu(rect) {
+    actionMenu.style.display = "flex";
 
-      // Base64 image
-      const image = response.image;
+    const spacing = 8;
+    const left = Math.min(
+      window.innerWidth - actionMenu.offsetWidth - spacing,
+      Math.max(spacing, rect.right - actionMenu.offsetWidth)
+    );
 
-      const link = document.createElement("a");
-      link.download = "screenshot.png";
-      link.href = image.toDataURL();
-      link.click();
+    let top = rect.bottom + spacing;
+
+    if (top + actionMenu.offsetHeight > window.innerHeight - spacing) {
+      top = Math.max(spacing, rect.top - actionMenu.offsetHeight - spacing);
     }
+
+    actionMenu.style.left = left + "px";
+    actionMenu.style.top = top + "px";
+  }
+
+  function hideCaptureUi() {
+    interaction.remove();
+    selection.remove();
+    hint.remove();
+    overlays.forEach((overlay) => overlay.remove());
+  }
+
+  function showReviewUi(rect) {
+    if (!document.body.contains(interaction)) {
+      document.body.appendChild(interaction);
+    }
+
+    if (!document.body.contains(selection)) {
+      document.body.appendChild(selection);
+    }
+
+    overlays.forEach((overlay) => {
+      if (!document.body.contains(overlay)) {
+        document.body.appendChild(overlay);
+      }
+    });
+
+    interaction.style.pointerEvents = "auto";
+    selection.style.display = "block";
+    selection.style.left = rect.left + "px";
+    selection.style.top = rect.top + "px";
+    selection.style.width = rect.width + "px";
+    selection.style.height = rect.height + "px";
+  }
+
+  function waitForCleanPaint(callback) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (isActive) {
+          callback();
+        }
+      });
+    });
+  }
+
+  function cleanup() {
+    if (!isActive) {
+      return;
+    }
+
+    isActive = false;
+    hideCaptureUi();
+    actionMenu.remove();
+    document.removeEventListener("keydown", handleKeyDown, true);
+    document.documentElement.style.overflow = prevOverflow;
+    document.documentElement.style.userSelect = prevUserSelect;
+
+    if (window.__quickShotCleanup === cleanup) {
+      delete window.__quickShotCleanup;
+    }
+  }
+
+  window.__quickShotCleanup = cleanup;
+
+  function handleKeyDown(e) {
+    if (e.key !== "Escape") return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    cleanup();
+  }
+
+  document.addEventListener("keydown", handleKeyDown, true);
+
+  async function copyImageToClipboard() {
+    if (!capturedImage) {
+      return;
+    }
+
+    if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+      throw new Error("Clipboard image copy is not available on this page.");
+    }
+
+    const blob = await fetch(capturedImage).then((response) => response.blob());
+
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        [blob.type]: blob
+      })
+    ]);
+  }
+
+  copyButton.addEventListener("click", async () => {
+    try {
+      await copyImageToClipboard();
+      cleanup();
+    } catch (error) {
+      console.error(error);
+    }
+  });
+
+  downloadButton.addEventListener("click", () => {
+    if (!capturedImage) {
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.download = "screenshot.png";
+    link.href = capturedImage;
+    link.click();
+    cleanup();
+  });
+
+  cancelButton.addEventListener("click", () => {
+    cleanup();
+  });
+
+  interaction.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+
+    if (isReviewing) {
+      return;
+    }
+
+    isSelecting = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    hint.style.display = "none";
+    selection.style.display = "block";
+  });
+
+  interaction.addEventListener("mousemove", (e) => {
+    if (!isSelecting) return;
+
+    e.preventDefault();
+
+    const currentX = e.clientX;
+    const currentY = e.clientY;
+    const left = Math.min(startX, currentX);
+    const top = Math.min(startY, currentY);
+    const width = Math.abs(currentX - startX);
+    const height = Math.abs(currentY - startY);
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    selection.style.left = left + "px";
+    selection.style.top = top + "px";
+    selection.style.width = width + "px";
+    selection.style.height = height + "px";
+
+    topOverlay.style.left = "0";
+    topOverlay.style.top = "0";
+    topOverlay.style.width = viewportWidth + "px";
+    topOverlay.style.height = top + "px";
+
+    leftOverlay.style.left = "0";
+    leftOverlay.style.top = top + "px";
+    leftOverlay.style.width = left + "px";
+    leftOverlay.style.height = height + "px";
+
+    rightOverlay.style.left = left + width + "px";
+    rightOverlay.style.top = top + "px";
+    rightOverlay.style.width = viewportWidth - (left + width) + "px";
+    rightOverlay.style.height = height + "px";
+
+    bottomOverlay.style.left = "0";
+    bottomOverlay.style.top = top + height + "px";
+    bottomOverlay.style.width = viewportWidth + "px";
+    bottomOverlay.style.height = viewportHeight - (top + height) + "px";
+  });
+
+  interaction.addEventListener("mouseup", (e) => {
+    if (!isSelecting) return;
+
+    e.preventDefault();
+
+    isSelecting = false;
+    isReviewing = true;
+
+    const rect = selection.getBoundingClientRect();
+
+    if (rect.width < 1 || rect.height < 1) {
+      cleanup();
+      return;
+    }
+
+    hideCaptureUi();
+
+    waitForCleanPaint(() => {
+      chrome.runtime.sendMessage(
+        {
+          type: "capture",
+          x: rect.left,
+          y: rect.top,
+          width: rect.width,
+          height: rect.height,
+          devicePixelRatio: window.devicePixelRatio
+        },
+        (response) => {
+          if (!isActive) {
+            return;
+          }
+
+          if (chrome.runtime.lastError) {
+            console.error(chrome.runtime.lastError);
+            cleanup();
+            return;
+          }
+
+          if (!response?.image) {
+            console.error(response?.error || "Screenshot capture failed.");
+            cleanup();
+            return;
+          }
+
+          capturedImage = response.image;
+          showReviewUi(rect);
+          setButtonsDisabled(false);
+          positionActionMenu(rect);
+        }
+      );
+    });
+  });
+
+  interaction.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+    },
+    { passive: false }
   );
 
-  // Cleanup (comment this out if you want the UI to stay visible)
-  // interaction.remove();
-  // selection.remove();
-  // overlays.forEach(o => o.remove());
-
-  // document.documentElement.style.overflow = prevOverflow;
-  // document.documentElement.style.userSelect = prevUserSelect;
-});
-
-// Prevent wheel scrolling
-interaction.addEventListener("wheel", (e) => {
-  e.preventDefault();
-}, { passive: false });
-
-// Prevent context menu
-interaction.addEventListener("contextmenu", (e) => {
-  e.preventDefault();
-});
+  interaction.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
+})();
