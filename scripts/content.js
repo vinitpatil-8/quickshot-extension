@@ -141,7 +141,22 @@ interaction.addEventListener("mouseup", (e) => {
     y: rect.top,
     width: rect.width,
     height: rect.height
-  });
+  },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError);
+        return;
+      }
+
+      // Base64 image
+      const image = response.image;
+
+      const link = document.createElement("a");
+      link.download = "screenshot.png";
+      link.href = image.toDataURL();
+      link.click();
+    }
+  );
 
   // Cleanup (comment this out if you want the UI to stay visible)
   // interaction.remove();

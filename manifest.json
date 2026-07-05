@@ -8,5 +8,8 @@
     "default_popup": "popup/popup.html",
     "default_icon": "icn.png",
     "default_title": "QuickShot"
+  },
+  "background": {
+    "service_worker": "background.js"
   }
 }
