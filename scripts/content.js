@@ -1,8 +1,58 @@
-(() => {
+(async () => {
   const existingCleanup = window.__quickShotCleanup;
 
   if (typeof existingCleanup === "function") {
     existingCleanup();
+  }
+
+  function requestCapture(options) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage(
+        {
+          type: "capture",
+          ...options
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.error(chrome.runtime.lastError);
+            resolve(null);
+            return;
+          }
+
+          if (!response?.image) {
+            console.error(response?.error || "Screenshot capture failed.");
+            resolve(null);
+            return;
+          }
+
+          resolve(response.image);
+        }
+      );
+    });
+  }
+
+  let previewBitmap = null;
+
+  try {
+    const previewImage = await requestCapture({ mode: "preview" });
+
+    if (previewImage) {
+      const previewResponse = await fetch(previewImage);
+      const previewBlob = await previewResponse.blob();
+      previewBitmap = await createImageBitmap(previewBlob);
+    }
+  } catch (error) {
+    console.error("Failed to prepare the magnifier preview.", error);
+  }
+
+  const mount = document.body || document.documentElement;
+
+  if (!mount) {
+    if (previewBitmap) {
+      previewBitmap.close();
+    }
+
+    return;
   }
 
   const prevOverflow = document.documentElement.style.overflow;
@@ -12,6 +62,23 @@
   document.documentElement.style.userSelect = "none";
 
   const interaction = document.createElement("div");
+  const selection = document.createElement("div");
+  const hint = document.createElement("div");
+  const dimensionPill = document.createElement("div");
+  const magnifier = document.createElement("div");
+  const magnifierCanvas = document.createElement("canvas");
+  const actionMenu = document.createElement("div");
+  const copyButton = document.createElement("button");
+  const downloadButton = document.createElement("button");
+  const cancelButton = document.createElement("button");
+  const overlays = [];
+  const magnifierSize = 140;
+  const magnifierZoom = 4;
+  const overlayZIndex = 2147483647;
+  const uiZIndex = 2147483648;
+  const colorSchemeQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
+  const magnifierCtx = magnifierCanvas.getContext("2d");
+  const magnifierPixelSize = Math.round(magnifierSize * window.devicePixelRatio);
 
   interaction.style.cssText = `
   position:fixed;
@@ -20,10 +87,6 @@
   cursor:crosshair;
   `;
 
-  document.body.appendChild(interaction);
-
-  const selection = document.createElement("div");
-
   selection.style.cssText = `
   position:fixed;
   display:none;
@@ -31,25 +94,20 @@
   border:2px dashed white;
   background:transparent;
   pointer-events:none;
-  z-index:2147483648;
+  z-index:${uiZIndex};
   `;
 
-  document.body.appendChild(selection);
+  for (let i = 0; i < 4; i += 1) {
+    const overlay = document.createElement("div");
 
-  const overlays = [];
+    overlay.style.cssText = `
+    position:fixed;
+    background:rgba(0,0,0,.65);
+    pointer-events:none;
+    z-index:${overlayZIndex};
+    `;
 
-  for (let i = 0; i < 4; i++) {
-    const div = document.createElement("div");
-
-    div.style.cssText = `
-      position:fixed;
-      background:rgba(0,0,0,.65);
-      pointer-events:none;
-      z-index:2147483647;
-      `;
-
-    document.body.appendChild(div);
-    overlays.push(div);
+    overlays.push(overlay);
   }
 
   const [topOverlay, leftOverlay, rightOverlay, bottomOverlay] = overlays;
@@ -58,19 +116,6 @@
   topOverlay.style.top = "0";
   topOverlay.style.width = "100vw";
   topOverlay.style.height = "100vh";
-
-  let isSelecting = false;
-  let isActive = true;
-  let isReviewing = false;
-  let startX = 0;
-  let startY = 0;
-  let capturedImage = null;
-
-  const hint = document.createElement("div");
-  const actionMenu = document.createElement("div");
-  const copyButton = document.createElement("button");
-  const downloadButton = document.createElement("button");
-  const cancelButton = document.createElement("button");
 
   hint.textContent = "Press ESC to cancel";
   hint.style.cssText = `
@@ -85,10 +130,50 @@
   font:12px/1.2 system-ui,sans-serif;
   box-shadow:0 10px 30px rgba(0,0,0,.25);
   pointer-events:none;
-  z-index:2147483648;
+  z-index:${uiZIndex};
   `;
 
-  document.body.appendChild(hint);
+  dimensionPill.style.cssText = `
+  position:fixed;
+  top:16px;
+  left:50%;
+  transform:translateX(-50%);
+  display:none;
+  min-width:88px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:rgba(24,24,27,.92);
+  color:#fafafa;
+  text-align:center;
+  font:12px/1.2 system-ui,sans-serif;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  pointer-events:none;
+  z-index:${uiZIndex};
+  `;
+
+  magnifier.style.cssText = `
+  position:fixed;
+  display:${previewBitmap && magnifierCtx ? "block" : "none"};
+  width:${magnifierSize}px;
+  height:${magnifierSize}px;
+  border:2px solid rgba(255,255,255,.95);
+  border-radius:50%;
+  overflow:hidden;
+  background:rgba(24,24,27,.92);
+  box-shadow:0 18px 40px rgba(0,0,0,.35);
+  pointer-events:none;
+  z-index:${uiZIndex};
+  `;
+
+  magnifierCanvas.width = magnifierPixelSize;
+  magnifierCanvas.height = magnifierPixelSize;
+  magnifierCanvas.style.cssText = `
+  width:${magnifierSize}px;
+  height:${magnifierSize}px;
+  display:block;
+  `;
+
+  magnifier.appendChild(magnifierCanvas);
 
   actionMenu.style.cssText = `
   position:fixed;
@@ -99,7 +184,7 @@
   background:rgba(24,24,27,.96);
   box-shadow:0 10px 30px rgba(0,0,0,.35);
   pointer-events:auto;
-  z-index:2147483648;
+  z-index:${uiZIndex};
   `;
 
   [copyButton, downloadButton, cancelButton].forEach((button) => {
@@ -122,7 +207,35 @@
   cancelButton.disabled = false;
 
   actionMenu.append(copyButton, downloadButton, cancelButton);
-  document.body.appendChild(actionMenu);
+
+  mount.appendChild(interaction);
+  mount.appendChild(selection);
+  overlays.forEach((overlay) => mount.appendChild(overlay));
+  mount.appendChild(hint);
+  mount.appendChild(dimensionPill);
+  mount.appendChild(magnifier);
+  mount.appendChild(actionMenu);
+
+  let isSelecting = false;
+  let isActive = true;
+  let isReviewing = false;
+  let startX = 0;
+  let startY = 0;
+  let capturedImage = null;
+  let captureFileName = null;
+
+  function buildFileName(date = new Date()) {
+    const parts = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+      String(date.getHours()).padStart(2, "0"),
+      String(date.getMinutes()).padStart(2, "0"),
+      String(date.getSeconds()).padStart(2, "0")
+    ];
+
+    return `QuickShot-${parts.join("-")}.png`;
+  }
 
   function setButtonsDisabled(disabled) {
     copyButton.disabled = disabled;
@@ -148,34 +261,128 @@
     actionMenu.style.top = top + "px";
   }
 
+  function updateSelectionUi(left, top, width, height) {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    selection.style.left = left + "px";
+    selection.style.top = top + "px";
+    selection.style.width = width + "px";
+    selection.style.height = height + "px";
+
+    topOverlay.style.left = "0";
+    topOverlay.style.top = "0";
+    topOverlay.style.width = viewportWidth + "px";
+    topOverlay.style.height = top + "px";
+
+    leftOverlay.style.left = "0";
+    leftOverlay.style.top = top + "px";
+    leftOverlay.style.width = left + "px";
+    leftOverlay.style.height = height + "px";
+
+    rightOverlay.style.left = left + width + "px";
+    rightOverlay.style.top = top + "px";
+    rightOverlay.style.width = viewportWidth - (left + width) + "px";
+    rightOverlay.style.height = height + "px";
+
+    bottomOverlay.style.left = "0";
+    bottomOverlay.style.top = top + height + "px";
+    bottomOverlay.style.width = viewportWidth + "px";
+    bottomOverlay.style.height = viewportHeight - (top + height) + "px";
+  }
+
+  function updateDimensionPill(width, height) {
+    dimensionPill.textContent = `${Math.round(width)} x ${Math.round(height)}`;
+    dimensionPill.style.display = "block";
+  }
+
+  function updateMagnifier(clientX, clientY) {
+    if (isReviewing || !mount.contains(magnifier) || !previewBitmap || !magnifierCtx) {
+      return;
+    }
+
+    const offset = 24;
+    let left = clientX + offset;
+    let top = clientY + offset;
+
+    if (left + magnifierSize > window.innerWidth - 8) {
+      left = clientX - magnifierSize - offset;
+    }
+
+    if (top + magnifierSize > window.innerHeight - 8) {
+      top = clientY - magnifierSize - offset;
+    }
+
+    magnifier.style.left = Math.max(8, left) + "px";
+    magnifier.style.top = Math.max(8, top) + "px";
+
+    const sourceSize = magnifierCanvas.width / magnifierZoom;
+    const maxSourceX = Math.max(0, previewBitmap.width - sourceSize);
+    const maxSourceY = Math.max(0, previewBitmap.height - sourceSize);
+    const sourceX = Math.min(
+      maxSourceX,
+      Math.max(0, clientX * window.devicePixelRatio - sourceSize / 2)
+    );
+    const sourceY = Math.min(
+      maxSourceY,
+      Math.max(0, clientY * window.devicePixelRatio - sourceSize / 2)
+    );
+    const center = magnifierCanvas.width / 2;
+
+    magnifierCtx.imageSmoothingEnabled = false;
+    magnifierCtx.clearRect(0, 0, magnifierCanvas.width, magnifierCanvas.height);
+    magnifierCtx.drawImage(
+      previewBitmap,
+      sourceX,
+      sourceY,
+      sourceSize,
+      sourceSize,
+      0,
+      0,
+      magnifierCanvas.width,
+      magnifierCanvas.height
+    );
+
+    magnifierCtx.strokeStyle = colorSchemeQuery?.matches
+      ? "rgba(255,255,255,.9)"
+      : "rgba(0,0,0,.9)";
+    magnifierCtx.lineWidth = Math.max(1, window.devicePixelRatio);
+    magnifierCtx.beginPath();
+    magnifierCtx.moveTo(center, 0);
+    magnifierCtx.lineTo(center, magnifierCanvas.height);
+    magnifierCtx.moveTo(0, center);
+    magnifierCtx.lineTo(magnifierCanvas.width, center);
+    magnifierCtx.stroke();
+  }
+
   function hideCaptureUi() {
     interaction.remove();
     selection.remove();
     hint.remove();
+    dimensionPill.remove();
+    magnifier.remove();
     overlays.forEach((overlay) => overlay.remove());
   }
 
   function showReviewUi(rect) {
-    if (!document.body.contains(interaction)) {
-      document.body.appendChild(interaction);
+    if (!mount.contains(interaction)) {
+      mount.appendChild(interaction);
     }
 
-    if (!document.body.contains(selection)) {
-      document.body.appendChild(selection);
+    if (!mount.contains(selection)) {
+      mount.appendChild(selection);
     }
 
     overlays.forEach((overlay) => {
-      if (!document.body.contains(overlay)) {
-        document.body.appendChild(overlay);
+      if (!mount.contains(overlay)) {
+        mount.appendChild(overlay);
       }
     });
 
     interaction.style.pointerEvents = "auto";
+    interaction.style.cursor = "default";
     selection.style.display = "block";
-    selection.style.left = rect.left + "px";
-    selection.style.top = rect.top + "px";
-    selection.style.width = rect.width + "px";
-    selection.style.height = rect.height + "px";
+    updateSelectionUi(rect.left, rect.top, rect.width, rect.height);
   }
 
   function waitForCleanPaint(callback) {
@@ -199,6 +406,11 @@
     document.removeEventListener("keydown", handleKeyDown, true);
     document.documentElement.style.overflow = prevOverflow;
     document.documentElement.style.userSelect = prevUserSelect;
+
+    if (previewBitmap) {
+      previewBitmap.close();
+      previewBitmap = null;
+    }
 
     if (window.__quickShotCleanup === cleanup) {
       delete window.__quickShotCleanup;
@@ -250,7 +462,7 @@
     }
 
     const link = document.createElement("a");
-    link.download = "screenshot.png";
+    link.download = captureFileName || buildFileName();
     link.href = capturedImage;
     link.click();
     cleanup();
@@ -271,11 +483,19 @@
     startX = e.clientX;
     startY = e.clientY;
     hint.style.display = "none";
+    dimensionPill.style.display = "block";
+    updateDimensionPill(0, 0);
     selection.style.display = "block";
+    interaction.style.cursor = "crosshair";
+    updateSelectionUi(startX, startY, 0, 0);
   });
 
   interaction.addEventListener("mousemove", (e) => {
-    if (!isSelecting) return;
+    updateMagnifier(e.clientX, e.clientY);
+
+    if (!isSelecting) {
+      return;
+    }
 
     e.preventDefault();
 
@@ -285,33 +505,9 @@
     const top = Math.min(startY, currentY);
     const width = Math.abs(currentX - startX);
     const height = Math.abs(currentY - startY);
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
 
-    selection.style.left = left + "px";
-    selection.style.top = top + "px";
-    selection.style.width = width + "px";
-    selection.style.height = height + "px";
-
-    topOverlay.style.left = "0";
-    topOverlay.style.top = "0";
-    topOverlay.style.width = viewportWidth + "px";
-    topOverlay.style.height = top + "px";
-
-    leftOverlay.style.left = "0";
-    leftOverlay.style.top = top + "px";
-    leftOverlay.style.width = left + "px";
-    leftOverlay.style.height = height + "px";
-
-    rightOverlay.style.left = left + width + "px";
-    rightOverlay.style.top = top + "px";
-    rightOverlay.style.width = viewportWidth - (left + width) + "px";
-    rightOverlay.style.height = height + "px";
-
-    bottomOverlay.style.left = "0";
-    bottomOverlay.style.top = top + height + "px";
-    bottomOverlay.style.width = viewportWidth + "px";
-    bottomOverlay.style.height = viewportHeight - (top + height) + "px";
+    updateSelectionUi(left, top, width, height);
+    updateDimensionPill(width, height);
   });
 
   interaction.addEventListener("mouseup", (e) => {
@@ -321,6 +517,7 @@
 
     isSelecting = false;
     isReviewing = true;
+    dimensionPill.style.display = "none";
 
     const rect = selection.getBoundingClientRect();
 
@@ -331,39 +528,29 @@
 
     hideCaptureUi();
 
-    waitForCleanPaint(() => {
-      chrome.runtime.sendMessage(
-        {
-          type: "capture",
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height,
-          devicePixelRatio: window.devicePixelRatio
-        },
-        (response) => {
-          if (!isActive) {
-            return;
-          }
+    waitForCleanPaint(async () => {
+      const image = await requestCapture({
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+        devicePixelRatio: window.devicePixelRatio
+      });
 
-          if (chrome.runtime.lastError) {
-            console.error(chrome.runtime.lastError);
-            cleanup();
-            return;
-          }
+      if (!isActive) {
+        return;
+      }
 
-          if (!response?.image) {
-            console.error(response?.error || "Screenshot capture failed.");
-            cleanup();
-            return;
-          }
+      if (!image) {
+        cleanup();
+        return;
+      }
 
-          capturedImage = response.image;
-          showReviewUi(rect);
-          setButtonsDisabled(false);
-          positionActionMenu(rect);
-        }
-      );
+      capturedImage = image;
+      captureFileName = buildFileName();
+      showReviewUi(rect);
+      setButtonsDisabled(false);
+      positionActionMenu(rect);
     });
   });
 

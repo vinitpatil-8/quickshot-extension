@@ -1,19 +1,14 @@
 document.querySelector("#screenshotBtn").addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true
-    });
-
-    if (!tab?.id) {
-        return;
-    }
-
     try {
-        await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ["scripts/content.js"]
-        });
+        const response = await chrome.runtime.sendMessage({ type: "start-screenshot" });
+
+        if (response?.error) {
+            console.error("Failed to start the screenshot tool.", response.error);
+            return;
+        }
+
+        window.close();
     } catch (error) {
-        console.error("Failed to inject the screenshot tool.", error);
+        console.error("Failed to start the screenshot tool.", error);
     }
 });
