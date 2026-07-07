@@ -1,5 +1,16 @@
 /* popup.css */
 
+:root {
+  --primary-bg: #181718;
+  --primary-text: #fff;
+  --primary-button: #196DBB;
+  --primary-button-hover: #13538f;
+  --primary-tooltip: #252325;
+  --primary-shadow: rgba(0, 0, 0, 0.25);
+}
+svg{
+  fill: var(--primary-text);
+}
 * {
   margin: 0;
   padding: 0;
@@ -8,25 +19,49 @@
 }
 
 body {
-  width: fit-content;
-  height: 80px;
-  background: #1f2937;
+  width: 300px;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
   display: flex;
+  flex-direction: column;
   justify-content: center;
+}
+
+.top {
+  justify-content: space-between;
+  margin-top: 5px;
+  display: flex;
+  font-size: 24px;
+  flex-direction: row;
+  width: 100%;
+  gap: 5px;
+}
+.head{
+  display: flex;
+  flex: 1;
+  text-align: center;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+  gap: 5px;
 }
 
 .buttons {
   display: flex;
   gap: 20px;
-  padding: 40px;
+  padding: 20px 20px 40px 20px;
 }
 
-#settingsBtn{
+#settingsBtn {
   border: none;
   cursor: pointer;
   background-color: transparent;
   height: fit-content;
-  margin: 5px;
+  margin: 0px 5px 0 0;
+  height: 20px;
+  width: 20px;
+  flex: 0 0 auto;
 }
 
 .buttons button {
@@ -34,7 +69,7 @@ body {
   height: 40px;
   border: none;
   border-radius: 18px;
-  background: #374151;
+  background: var(--primary-button);
   cursor: pointer;
 
   display: flex;
@@ -42,11 +77,11 @@ body {
   align-items: center;
 
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px var(--primary-shadow);
 }
 
 .buttons button:hover {
-  background: #4b5563;
+  background: var(--primary-button-hover);
   transform: translateY(-2px);
 }
 
@@ -60,6 +95,7 @@ body {
   pointer-events: none;
   user-select: none;
 }
+
 .tooltip {
   position: relative;
 }
@@ -70,8 +106,8 @@ body {
   left: 50%;
   transform: translateX(-50%) translateY(5px);
 
-  background: #111827;
-  color: #fff;
+  background: var(--primary-tooltip);
+  color: var(--primary-text);
   padding: 6px 10px;
   border-radius: 8px;
   font-size: 12px;
