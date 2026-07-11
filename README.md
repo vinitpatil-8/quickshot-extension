@@ -117,10 +117,11 @@ quickshot/
 * [x] Download screenshots
 * [x] Copy to clipboard
 * [x] Cancel with Escape
+- [x] Settings page
+- [x] Theme support
 * [ ] Screen recording
 * [ ] Annotation tools
-* [ ] Keyboard shortcuts
-* [ ] Custom save location
+* [ ] MP4 Export
 
 ---
 
