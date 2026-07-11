@@ -185,17 +185,85 @@ a {
   width: 15px;
 }
 
-.uispan{
+.uispan {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   font-size: 13px;
   text-align: center;
-}
-input[type="radio"] , label {
   cursor: pointer;
 }
-.second{
+
+.uispan input[type="radio"],
+.uispan input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--primary-text);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+  position: relative;
+  outline: none;
+}
+
+.uispan input[type="checkbox"] {
+  border-radius: 4px;
+}
+
+.uispan input[type="radio"] {
+  border-radius: 50%;
+}
+
+.uispan input[type="radio"]:hover,
+.uispan input[type="checkbox"]:hover {
+  border-color: var(--primary-button);
+}
+
+.uispan input[type="radio"]:checked,
+.uispan input[type="checkbox"]:checked {
+  border-color: var(--primary-button);
+  background: var(--primary-button);
+  box-shadow: 0 0 0 1px var(--primary-button);
+}
+
+.uispan input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.uispan input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-bg);
+}
+
+.uispan label {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.uispan:hover label {
+  color: var(--primary-button);
+}
+
+.second {
   margin-top: 20px;
 }
 .flex{

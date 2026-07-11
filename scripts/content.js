@@ -31,27 +31,9 @@
     });
   }
 
-  let previewBitmap = null;
-
-  try {
-    const previewImage = await requestCapture({ mode: "preview" });
-
-    if (previewImage) {
-      const previewResponse = await fetch(previewImage);
-      const previewBlob = await previewResponse.blob();
-      previewBitmap = await createImageBitmap(previewBlob);
-    }
-  } catch (error) {
-    console.error("Failed to prepare the magnifier preview.", error);
-  }
-
   const mount = document.body || document.documentElement;
 
   if (!mount) {
-    if (previewBitmap) {
-      previewBitmap.close();
-    }
-
     return;
   }
 
@@ -72,6 +54,7 @@
   const downloadButton = document.createElement("button");
   const cancelButton = document.createElement("button");
   const overlays = [];
+  const errorToast = document.createElement("div");
   const magnifierSize = 140;
   const magnifierZoom = 4;
   const overlayZIndex = 2147483647;
@@ -79,6 +62,9 @@
   const colorSchemeQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
   const magnifierCtx = magnifierCanvas.getContext("2d");
   const magnifierPixelSize = Math.round(magnifierSize * window.devicePixelRatio);
+  const magnifierBorderColor = colorSchemeQuery?.matches
+    ? "rgba(255,255,255,.95)"
+    : "rgba(0,0,0,.95)";
 
   interaction.style.cssText = `
   position:fixed;
@@ -151,12 +137,28 @@
   z-index:${uiZIndex};
   `;
 
+  errorToast.style.cssText = `
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%);
+  display:none;
+  padding:8px 16px;
+  border-radius:999px;
+  background:#e04848;
+  color:#fff;
+  font:13px/1.2 system-ui,sans-serif;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  pointer-events:none;
+  z-index:${uiZIndex + 1};
+  `;
+
   magnifier.style.cssText = `
   position:fixed;
-  display:${previewBitmap && magnifierCtx ? "block" : "none"};
+  display:none;
   width:${magnifierSize}px;
   height:${magnifierSize}px;
-  border:2px solid rgba(255,255,255,.95);
+  border:2px solid ${magnifierBorderColor};
   border-radius:50%;
   overflow:hidden;
   background:rgba(24,24,27,.92);
@@ -213,6 +215,7 @@
   overlays.forEach((overlay) => mount.appendChild(overlay));
   mount.appendChild(hint);
   mount.appendChild(dimensionPill);
+  mount.appendChild(errorToast);
   mount.appendChild(magnifier);
   mount.appendChild(actionMenu);
 
@@ -223,6 +226,7 @@
   let startY = 0;
   let capturedImage = null;
   let captureFileName = null;
+  let previewBitmap = null;
 
   function buildFileName(date = new Date()) {
     const parts = [
@@ -242,8 +246,33 @@
     downloadButton.disabled = disabled;
   }
 
+  function showErrorToast(message) {
+    errorToast.textContent = message;
+    errorToast.style.display = "block";
+
+    setTimeout(() => {
+      if (errorToast.parentNode) {
+        errorToast.remove();
+      }
+    }, 3000);
+  }
+
+  function setCopyResult(success) {
+    const originalText = "Copy";
+
+    copyButton.textContent = success ? "Copied!" : "Failed";
+    copyButton.style.background = success ? "#2a7a2a" : "#a03030";
+
+    setTimeout(() => {
+      copyButton.textContent = originalText;
+      copyButton.style.background = "";
+    }, 2000);
+  }
+
   function positionActionMenu(rect) {
     actionMenu.style.display = "flex";
+
+    actionMenu.getBoundingClientRect();
 
     const spacing = 8;
     const left = Math.min(
@@ -257,38 +286,38 @@
       top = Math.max(spacing, rect.top - actionMenu.offsetHeight - spacing);
     }
 
-    actionMenu.style.left = left + "px";
-    actionMenu.style.top = top + "px";
+    actionMenu.style.left = `${left}px`;
+    actionMenu.style.top = `${top}px`;
   }
 
   function updateSelectionUi(left, top, width, height) {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    selection.style.left = left + "px";
-    selection.style.top = top + "px";
-    selection.style.width = width + "px";
-    selection.style.height = height + "px";
+    selection.style.left = `${left}px`;
+    selection.style.top = `${top}px`;
+    selection.style.width = `${width}px`;
+    selection.style.height = `${height}px`;
 
     topOverlay.style.left = "0";
     topOverlay.style.top = "0";
-    topOverlay.style.width = viewportWidth + "px";
-    topOverlay.style.height = top + "px";
+    topOverlay.style.width = `${viewportWidth}px`;
+    topOverlay.style.height = `${top}px`;
 
     leftOverlay.style.left = "0";
-    leftOverlay.style.top = top + "px";
-    leftOverlay.style.width = left + "px";
-    leftOverlay.style.height = height + "px";
+    leftOverlay.style.top = `${top}px`;
+    leftOverlay.style.width = `${left}px`;
+    leftOverlay.style.height = `${height}px`;
 
-    rightOverlay.style.left = left + width + "px";
-    rightOverlay.style.top = top + "px";
-    rightOverlay.style.width = viewportWidth - (left + width) + "px";
-    rightOverlay.style.height = height + "px";
+    rightOverlay.style.left = `${left + width}px`;
+    rightOverlay.style.top = `${top}px`;
+    rightOverlay.style.width = `${viewportWidth - (left + width)}px`;
+    rightOverlay.style.height = `${height}px`;
 
     bottomOverlay.style.left = "0";
-    bottomOverlay.style.top = top + height + "px";
-    bottomOverlay.style.width = viewportWidth + "px";
-    bottomOverlay.style.height = viewportHeight - (top + height) + "px";
+    bottomOverlay.style.top = `${top + height}px`;
+    bottomOverlay.style.width = `${viewportWidth}px`;
+    bottomOverlay.style.height = `${viewportHeight - (top + height)}px`;
   }
 
   function updateDimensionPill(width, height) {
@@ -297,7 +326,7 @@
   }
 
   function updateMagnifier(clientX, clientY) {
-    if (isReviewing || !mount.contains(magnifier) || !previewBitmap || !magnifierCtx) {
+    if (!previewBitmap || !magnifierCtx) {
       return;
     }
 
@@ -313,8 +342,8 @@
       top = clientY - magnifierSize - offset;
     }
 
-    magnifier.style.left = Math.max(8, left) + "px";
-    magnifier.style.top = Math.max(8, top) + "px";
+    magnifier.style.left = `${Math.max(8, left)}px`;
+    magnifier.style.top = `${Math.max(8, top)}px`;
 
     const sourceSize = magnifierCanvas.width / magnifierZoom;
     const maxSourceX = Math.max(0, previewBitmap.width - sourceSize);
@@ -360,6 +389,7 @@
     selection.remove();
     hint.remove();
     dimensionPill.remove();
+    errorToast.remove();
     magnifier.remove();
     overlays.forEach((overlay) => overlay.remove());
   }
@@ -379,10 +409,72 @@
       }
     });
 
-    interaction.style.pointerEvents = "auto";
+    interaction.style.pointerEvents = "none";
     interaction.style.cursor = "default";
     selection.style.display = "block";
     updateSelectionUi(rect.left, rect.top, rect.width, rect.height);
+  }
+
+  async function copyImageData(dataUrl) {
+    if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+      throw new Error("Clipboard image copy is not available on this page.");
+    }
+
+    const blob = await fetch(dataUrl).then((response) => response.blob());
+
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        [blob.type]: blob
+      })
+    ]);
+  }
+
+  function downloadImage(dataUrl, fileName) {
+    const link = document.createElement("a");
+    link.download = fileName;
+    link.href = dataUrl;
+    link.click();
+  }
+
+  async function autoApplyActions(image, rect) {
+    const settings = await chrome.storage.sync.get({
+      autoCopy: false,
+      autoDownload: false
+    });
+
+    if (settings.autoCopy && settings.autoDownload) {
+      try {
+        await copyImageData(image);
+      } catch (error) {
+        console.error(error);
+      }
+
+      downloadImage(image, buildFileName());
+      cleanup();
+      return;
+    }
+
+    if (settings.autoCopy) {
+      try {
+        await copyImageData(image);
+        setCopyResult(true);
+      } catch (error) {
+        console.error(error);
+        setCopyResult(false);
+      }
+    }
+
+    if (settings.autoDownload) {
+      downloadImage(image, buildFileName());
+      cleanup();
+      return;
+    }
+
+    capturedImage = image;
+    captureFileName = buildFileName();
+    showReviewUi(rect);
+    setButtonsDisabled(false);
+    positionActionMenu(rect);
   }
 
   function waitForCleanPaint(callback) {
@@ -429,30 +521,17 @@
 
   document.addEventListener("keydown", handleKeyDown, true);
 
-  async function copyImageToClipboard() {
+  copyButton.addEventListener("click", async () => {
     if (!capturedImage) {
       return;
     }
 
-    if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
-      throw new Error("Clipboard image copy is not available on this page.");
-    }
-
-    const blob = await fetch(capturedImage).then((response) => response.blob());
-
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        [blob.type]: blob
-      })
-    ]);
-  }
-
-  copyButton.addEventListener("click", async () => {
     try {
-      await copyImageToClipboard();
-      cleanup();
+      await copyImageData(capturedImage);
+      setCopyResult(true);
     } catch (error) {
       console.error(error);
+      setCopyResult(false);
     }
   });
 
@@ -461,10 +540,7 @@
       return;
     }
 
-    const link = document.createElement("a");
-    link.download = captureFileName || buildFileName();
-    link.href = capturedImage;
-    link.click();
+    downloadImage(capturedImage, captureFileName || buildFileName());
     cleanup();
   });
 
@@ -491,7 +567,9 @@
   });
 
   interaction.addEventListener("mousemove", (e) => {
-    updateMagnifier(e.clientX, e.clientY);
+    if (previewBitmap && magnifierCtx && !isReviewing) {
+      updateMagnifier(e.clientX, e.clientY);
+    }
 
     if (!isSelecting) {
       return;
@@ -542,15 +620,12 @@
       }
 
       if (!image) {
+        showErrorToast("Screenshot capture failed.");
         cleanup();
         return;
       }
 
-      capturedImage = image;
-      captureFileName = buildFileName();
-      showReviewUi(rect);
-      setButtonsDisabled(false);
-      positionActionMenu(rect);
+      await autoApplyActions(image, rect);
     });
   });
 
@@ -565,4 +640,17 @@
   interaction.addEventListener("contextmenu", (e) => {
     e.preventDefault();
   });
+
+  try {
+    const previewImage = await requestCapture({ mode: "preview" });
+
+    if (previewImage) {
+      const previewResponse = await fetch(previewImage);
+      const previewBlob = await previewResponse.blob();
+      previewBitmap = await createImageBitmap(previewBlob);
+      magnifier.style.display = "block";
+    }
+  } catch (error) {
+    console.error("Failed to prepare the magnifier preview.", error);
+  }
 })();
