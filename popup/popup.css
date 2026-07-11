@@ -8,6 +8,10 @@
   --primary-tooltip: #252325;
   --primary-shadow: rgba(0, 0, 0, 0.25);
 }
+html {
+  width: fit-content;
+  height: fit-content;
+}
 svg{
   fill: var(--primary-text);
 }
@@ -63,6 +67,7 @@ body {
   width: 20px;
   flex: 0 0 auto;
 }
+
 
 .buttons button {
   width: 40px;
@@ -121,4 +126,81 @@ body {
 .tooltip:hover .tooltip-text {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+.settings{
+  width: 100%;
+  display: none;
+  flex-direction: column;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
+  gap: 10px;
+}
+.backbtn{
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-top: 5px;
+  margin-left: 5px;
+}
+.element{
+  display: flex;
+  flex-direction: column;
+  color: var(--primary-text);
+  text-align: center;
+  cursor: default;
+  min-height: fit-content;
+  height: 80px;
+  max-height: 100px;
+  width: 100%;
+  gap: 10px;
+}
+.sethead{
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-weight:bolder;
+  font-size: 18px;
+}
+.footer{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  height: fit-content;
+  margin-bottom: 2px;
+  width: 100%;
+  text-align: center;
+  margin-top: 20px;
+}
+a {
+  text-decoration: none;
+  color: var(--primary-text);
+}
+#gobackbtn{
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+  height: fit-content;
+  margin: 0px 5px 0 0;
+  height: 15px;
+  width: 15px;
+}
+
+.uispan{
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  font-size: 13px;
+  text-align: center;
+}
+input[type="radio"] , label {
+  cursor: pointer;
+}
+.second{
+  margin-top: 20px;
+}
+.flex{
+  display: flex;
+}
+.none{
+  display: none;
 }
