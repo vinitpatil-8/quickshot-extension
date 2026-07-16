@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Capture. Crop. Copy. Done.</strong><br>
-  A lightweight Chrome extension for taking quick, distraction-free screenshots.
+  A lightweight Chrome extension for taking quick, distraction free screenshots.
 </p>
 
 
