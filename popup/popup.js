@@ -1,24 +1,40 @@
 (async () => {
-  const settings = await chrome.storage.sync.get({
-    theme: "system",
-    autoCopy: false,
-    autoDownload: false
-  });
+  async function getSettings() {
+    try {
+      return await chrome.storage.sync.get({
+        theme: "system",
+        autoCopy: false,
+        autoDownload: false
+      });
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+      return { theme: "system", autoCopy: false, autoDownload: false };
+    }
+  }
 
-  let mainPage1 = document.querySelector(".top");
-  let mainPage2 = document.querySelector(".buttons");
-  let mainButton = document.querySelector("#gobackbtn");
-  let settingsPage = document.querySelector(".settings");
-  let settingsButton = document.querySelector("#settingsBtn");
-  let initialHeight = window.innerHeight + "px";
+  async function saveSetting(key, value) {
+    try {
+      await chrome.storage.sync.set({ [key]: value });
+    } catch (error) {
+      console.error(`Failed to save setting "${key}":`, error);
+    }
+  }
+
+  const settings = await getSettings();
+
+  const headerSection = document.querySelector(".top");
+  const buttonsSection = document.querySelector(".buttons");
+  const backButton = document.querySelector("#gobackbtn");
+  const settingsPage = document.querySelector(".settings");
+  const settingsButton = document.querySelector("#settingsBtn");
 
   const r = document.documentElement;
 
-  let systemOpt = document.querySelector("#system");
-  let darkOpt = document.querySelector("#dark");
-  let lightOpt = document.querySelector("#light");
-  let copyDirect = document.querySelector("#copyDirect");
-  let downDirect = document.querySelector("#downDirect");
+  const systemOpt = document.querySelector("#system");
+  const darkOpt = document.querySelector("#dark");
+  const lightOpt = document.querySelector("#light");
+  const copyDirect = document.querySelector("#copyDirect");
+  const downDirect = document.querySelector("#downDirect");
 
   document.querySelector("#screenshotBtn").addEventListener("click", async () => {
     try {
@@ -71,12 +87,8 @@
   }
 
   async function saveTheme(theme) {
-    await chrome.storage.sync.set({ theme });
+    await saveSetting("theme", theme);
     applyTheme(theme);
-  }
-
-  async function saveScreenshotSetting(key, value) {
-    await chrome.storage.sync.set({ [key]: value });
   }
 
   systemOpt.addEventListener("change", () => saveTheme("system"));
@@ -84,11 +96,11 @@
   lightOpt.addEventListener("change", () => saveTheme("light"));
 
   copyDirect.addEventListener("change", () => {
-    saveScreenshotSetting("autoCopy", copyDirect.checked);
+    saveSetting("autoCopy", copyDirect.checked);
   });
 
   downDirect.addEventListener("change", () => {
-    saveScreenshotSetting("autoDownload", downDirect.checked);
+    saveSetting("autoDownload", downDirect.checked);
   });
 
   switch (settings.theme) {
@@ -114,29 +126,24 @@
 
   applyTheme(settings.theme);
 
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  mediaQuery.addEventListener("change", () => {
     if (systemOpt.checked) {
       applyTheme("system");
     }
   });
 
   settingsButton.addEventListener("click", () => {
-    mainPage1.classList.add("none");
-    mainPage2.classList.add("none");
+    headerSection.classList.add("none");
+    buttonsSection.classList.add("none");
     settingsPage.classList.add("flex");
-
-    setTimeout(() => {
-      document.body.style.height = "300px";
-    }, 50);
+    document.body.style.height = "auto";
   });
 
-  mainButton.addEventListener("click", () => {
-    mainPage1.classList.remove("none");
-    mainPage2.classList.remove("none");
+  backButton.addEventListener("click", () => {
+    headerSection.classList.remove("none");
+    buttonsSection.classList.remove("none");
     settingsPage.classList.remove("flex");
-
-    setTimeout(() => {
-      document.body.style.height = initialHeight;
-    }, 50);
+    document.body.style.height = "";
   });
 })();

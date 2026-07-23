@@ -59,6 +59,34 @@ You're ready to go.
 
 ---
 
+## Building from Source
+
+QuickShot uses [esbuild](https://esbuild.github.io/) to bundle and minify the source files.
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Build the extension:
+
+```bash
+npm run build
+```
+
+Output goes to the `dist/` folder. Load this folder as an unpacked extension in Chrome.
+
+3. Watch for changes during development:
+
+```bash
+npm run watch
+```
+
+The built extension in `dist/` is self-contained — you don't need the source files to use it.
+
+---
+
 ## Usage
 
 1. Click the **QuickShot** extension icon.

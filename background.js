@@ -2,13 +2,13 @@ function blobToDataUrl(blob) {
     return blob.arrayBuffer().then((buffer) => {
         const bytes = new Uint8Array(buffer);
         const chunkSize = 0x8000;
-        let binary = "";
+        const chunks = [];
 
         for (let i = 0; i < bytes.length; i += chunkSize) {
-            binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+            chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize)));
         }
 
-        return `data:${blob.type};base64,${btoa(binary)}`;
+        return `data:${blob.type};base64,${btoa(chunks.join(""))}`;
     });
 }
 
@@ -52,10 +52,10 @@ async function cropCapturedImage(dataUrl, options) {
     const imageBitmap = await createImageBitmap(imageBlob);
 
     try {
-        const scaledX = Math.max(0, Math.round(x * devicePixelRatio));
-        const scaledY = Math.max(0, Math.round(y * devicePixelRatio));
-        const scaledWidth = Math.max(1, Math.round(width * devicePixelRatio));
-        const scaledHeight = Math.max(1, Math.round(height * devicePixelRatio));
+        const scaledX = Math.max(0, Math.floor(x * devicePixelRatio));
+        const scaledY = Math.max(0, Math.floor(y * devicePixelRatio));
+        const scaledWidth = Math.max(1, Math.ceil(width * devicePixelRatio));
+        const scaledHeight = Math.max(1, Math.ceil(height * devicePixelRatio));
         const canvas = new OffscreenCanvas(scaledWidth, scaledHeight);
         const ctx = canvas.getContext("2d");
 
