@@ -4,11 +4,12 @@
       return await chrome.storage.sync.get({
         theme: "system",
         autoCopy: false,
-        autoDownload: false
+        autoDownload: false,
+        recordAudio: false
       });
     } catch (error) {
       console.error("Failed to load settings:", error);
-      return { theme: "system", autoCopy: false, autoDownload: false };
+      return { theme: "system", autoCopy: false, autoDownload: false, recordAudio: false };
     }
   }
 
@@ -50,6 +51,15 @@
       window.close();
     } catch (error) {
       console.error(error);
+    }
+  });
+
+  document.querySelector("#recordBtn").addEventListener("click", async () => {
+    try {
+      await chrome.tabs.create({ url: chrome.runtime.getURL("recorder/recorder.html?auto=true") });
+      window.close();
+    } catch (error) {
+      console.error("Failed to open recorder tab:", error);
     }
   });
 
@@ -123,6 +133,15 @@
   if (settings.autoDownload) {
     downDirect.checked = true;
   }
+
+  const recordAudio = document.querySelector("#recordAudio");
+  if (settings.recordAudio) {
+    recordAudio.checked = true;
+  }
+
+  recordAudio.addEventListener("change", () => {
+    saveSetting("recordAudio", recordAudio.checked);
+  });
 
   applyTheme(settings.theme);
 

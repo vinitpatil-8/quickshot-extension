@@ -82,7 +82,64 @@ async function cropCapturedImage(dataUrl, options) {
     }
 }
 
+function safeSendMessageToTab(tabId, message) {
+    if (tabId == null) return;
+    chrome.tabs.sendMessage(tabId, message, () => {
+        if (chrome.runtime.lastError) {
+            // Ignore error if target tab/content script is missing or navigated
+        }
+    });
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "start-recording") {
+        (async () => {
+            try {
+                await startScreenRecording(message.audio);
+                sendResponse({ ok: true });
+            } catch (error) {
+                const errorMsg = (typeof error === 'object' && error !== null)
+                    ? (error.formatted || `${error.name || 'Error'}: ${error.message || String(error)}`)
+                    : String(error);
+                sendResponse({ error: errorMsg });
+            }
+        })();
+        return true;
+    }
+
+    if (message.type === "recording-finished" || message.type === "recording-error") {
+        closeOffscreenDocument();
+        // Forward to active tab so UI cleans up safely
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]?.id) safeSendMessageToTab(tabs[0].id, message);
+        });
+        
+        if (message.type === "recording-finished") {
+            chrome.tabs.create({ url: chrome.runtime.getURL("preview/preview.html") });
+        }
+        return;
+    }
+
+    if (message.type === "recording-started") {
+        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+            if (tabs[0]?.id) {
+                try {
+                    await chrome.scripting.insertCSS({
+                        target: { tabId: tabs[0].id },
+                        files: ["scripts/recording-ui.css"]
+                    });
+                    await chrome.scripting.executeScript({
+                        target: { tabId: tabs[0].id },
+                        files: ["scripts/recording-ui.js"]
+                    });
+                } catch (err) {
+                    console.warn("Could not inject recording UI into tab:", err);
+                }
+            }
+        });
+        return;
+    }
+
     if (message.type === "start-screenshot") {
         (async () => {
             try {
@@ -143,3 +200,67 @@ chrome.commands.onCommand.addListener(async (command) => {
         console.error("Failed to start screenshot from keyboard shortcut.", error);
     }
 });
+
+const OFFSCREEN_DOCUMENT_PATH = '/offscreen/offscreen.html';
+
+async function hasOffscreenDocument() {
+    if ('getContexts' in chrome.runtime) {
+        const contexts = await chrome.runtime.getContexts({
+            contextTypes: ['OFFSCREEN_DOCUMENT']
+        });
+        return Boolean(contexts.length);
+    } else {
+        const matchedClients = await clients.matchAll();
+        return matchedClients.some(c => c.url.endsWith(OFFSCREEN_DOCUMENT_PATH));
+    }
+}
+
+async function setupOffscreenDocument() {
+    if (await hasOffscreenDocument()) {
+        return;
+    }
+    await chrome.offscreen.createDocument({
+        url: OFFSCREEN_DOCUMENT_PATH,
+        reasons: ['USER_MEDIA'],
+        justification: 'Recording screen'
+    });
+}
+
+async function closeOffscreenDocument() {
+    if (!(await hasOffscreenDocument())) {
+        return;
+    }
+    await chrome.offscreen.closeDocument();
+}
+
+async function startScreenRecording(recordAudio) {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const targetTab = tabs.length > 0 ? tabs[0] : null;
+
+    const streamId = await new Promise((resolve, reject) => {
+        chrome.desktopCapture.chooseDesktopMedia(
+            ['screen', 'window', 'tab', 'audio'],
+            targetTab,
+            (id) => {
+                if (chrome.runtime.lastError) {
+                    reject(new Error(`Desktop capture error: ${chrome.runtime.lastError.message}`));
+                    return;
+                }
+                if (!id) {
+                    reject(new Error('User cancelled capture selection'));
+                    return;
+                }
+                resolve(id);
+            }
+        );
+    });
+
+    await setupOffscreenDocument();
+
+    chrome.runtime.sendMessage({
+        target: 'offscreen',
+        type: 'start-recording',
+        streamId: streamId,
+        options: { audio: recordAudio }
+    });
+}

@@ -3,7 +3,7 @@
   "name": "QuickShot",
   "version": "1.0.1",
   "description": "Capture and save screenshots of the current tab.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "desktopCapture", "offscreen", "downloads"],
   "background": {
     "service_worker": "background.js"
   },

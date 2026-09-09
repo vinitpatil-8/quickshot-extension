@@ -14,6 +14,14 @@ const staticFiles = [
   "manifest.json",
   "popup/popup.html",
   "popup/popup.css",
+  "offscreen/offscreen.html",
+  "offscreen/offscreen.js",
+  "preview/preview.html",
+  "preview/preview.js",
+  "recorder/recorder.html",
+  "recorder/recorder.js",
+  "scripts/recording-ui.js",
+  "scripts/recording-ui.css",
 ];
 
 const staticDirs = ["assets"];
