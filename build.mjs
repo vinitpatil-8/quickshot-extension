@@ -8,6 +8,10 @@ const entryPoints = [
   "background.js",
   "scripts/content.js",
   "popup/popup.js",
+  "offscreen/offscreen.js",
+  "recorder/recorder.js",
+  "preview/preview.js",
+  "history/history.js",
 ];
 
 const staticFiles = [
@@ -15,11 +19,9 @@ const staticFiles = [
   "popup/popup.html",
   "popup/popup.css",
   "offscreen/offscreen.html",
-  "offscreen/offscreen.js",
   "preview/preview.html",
-  "preview/preview.js",
   "recorder/recorder.html",
-  "recorder/recorder.js",
+  "history/history.html",
   "scripts/recording-ui.js",
   "scripts/recording-ui.css",
 ];

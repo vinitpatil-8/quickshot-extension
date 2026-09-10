@@ -1,3 +1,7 @@
+import { saveRecordingEntry } from "../scripts/db.js";
+import { getQualityBps, formatRecordingFilename } from "../scripts/settings.js";
+
+let state = "IDLE"; // IDLE, PREPARING, RECORDING, PAUSED, STOPPING, FINALIZING, ERROR
 let recorder = null;
 let recordedChunks = [];
 let activeStream = null;
@@ -5,6 +9,8 @@ let activeMicStream = null;
 let activeDesktopStream = null;
 let activeAudioContext = null;
 let activeAudioSources = [];
+let startTime = 0;
+let currentOptions = {};
 
 function formatMediaError(err, context = "") {
     if (!err) {
@@ -14,11 +20,11 @@ function formatMediaError(err, context = "") {
             formatted: "UnknownError: Unknown error"
         };
     }
-    
+
     let name = "Error";
     let message = "Unknown error";
     let stack = "";
-    
+
     if (typeof err === "object") {
         name = err.name || err.constructor?.name || "Error";
         message = err.message || err.reason || String(err);
@@ -27,11 +33,17 @@ function formatMediaError(err, context = "") {
         message = String(err);
     }
 
+    if (name === "NotAllowedError" || message.includes("Permission denied") || message.includes("user canceled")) {
+        message = "Capture permission was denied or cancelled by user.";
+    } else if (message.includes("QuotaExceededError") || name === "QuotaExceededError") {
+        message = "Storage limit reached. Recording could not be saved. Please clear some history items.";
+    }
+
     let fullText = `${name}: ${message}`;
     if (context) {
         fullText += ` (${context})`;
     }
-    
+
     return {
         name,
         message,
@@ -51,7 +63,7 @@ function getSupportedMimeType() {
         "video/webm",
         "video/mp4"
     ];
-    
+
     for (const type of candidates) {
         if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) {
             return type;
@@ -63,7 +75,7 @@ function getSupportedMimeType() {
 function cleanupStreams() {
     if (activeAudioSources.length > 0) {
         activeAudioSources.forEach(source => {
-            try { source.disconnect(); } catch (e) {}
+            try { source.disconnect(); } catch (e) { }
         });
         activeAudioSources = [];
     }
@@ -73,75 +85,47 @@ function cleanupStreams() {
             if (activeAudioContext.state !== "closed") {
                 activeAudioContext.close();
             }
-        } catch (e) {}
+        } catch (e) { }
         activeAudioContext = null;
     }
 
     if (activeMicStream) {
         try {
             activeMicStream.getTracks().forEach(track => track.stop());
-        } catch (e) {}
+        } catch (e) { }
         activeMicStream = null;
     }
 
     if (activeDesktopStream) {
         try {
             activeDesktopStream.getTracks().forEach(track => track.stop());
-        } catch (e) {}
+        } catch (e) { }
         activeDesktopStream = null;
     }
 
     if (activeStream) {
         try {
             activeStream.getTracks().forEach(track => track.stop());
-        } catch (e) {}
+        } catch (e) { }
         activeStream = null;
     }
 }
 
-const DB_NAME = 'QuickShotDB';
-const DB_VERSION = 1;
-
-function saveRecording(blob) {
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
-        req.onupgradeneeded = () => {
-            const db = req.result;
-            if (!db.objectStoreNames.contains('recordings')) {
-                db.createObjectStore('recordings');
-            }
-        };
-        req.onsuccess = () => {
-            const db = req.result;
-            const tx = db.transaction('recordings', 'readwrite');
-            const store = tx.objectStore('recordings');
-            store.put(blob, 'latest');
-            tx.oncomplete = () => {
-                db.close();
-                resolve();
-            };
-            tx.onerror = () => {
-                db.close();
-                reject(tx.error);
-            };
-        };
-        req.onerror = () => reject(req.error);
-    });
-}
-
 async function startRecording(streamId, options = {}) {
-    if (recorder && recorder.state !== "inactive") {
+    if (state !== "IDLE") {
         const err = formatMediaError(new Error("Recording is already in progress"), "State Check");
-        chrome.runtime.sendMessage({ type: "recording-error", error: err }).catch(() => {});
+        chrome.runtime.sendMessage({ type: "recording-error", error: err }).catch(() => { });
         return;
     }
 
+    state = "PREPARING";
+    currentOptions = options;
     cleanupStreams();
 
     let micTrack = null;
 
-    // 1. Acquire Microphone if requested
-    if (options.audio) {
+    // 1. Acquire Microphone if enabled in options
+    if (options.recordMic) {
         try {
             activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const micTracks = activeMicStream.getAudioTracks();
@@ -153,8 +137,8 @@ async function startRecording(streamId, options = {}) {
             console.warn("Microphone access failed, continuing without mic:", formattedErr.formatted);
             chrome.runtime.sendMessage({
                 type: "recording-warning",
-                warning: formattedErr
-            }).catch(() => {});
+                warning: { message: "Microphone unavailable. Recording will continue with video and system audio." }
+            }).catch(() => { });
         }
     }
 
@@ -162,43 +146,54 @@ async function startRecording(streamId, options = {}) {
     let desktopStream = null;
     const mediaSourceType = options.captureType === 'tab' ? "tab" : "desktop";
 
-    const fullConstraints = {
-        audio: {
-            mandatory: {
-                chromeMediaSource: mediaSourceType,
-                chromeMediaSourceId: streamId
-            }
-        },
-        video: {
-            mandatory: {
-                chromeMediaSource: mediaSourceType,
-                chromeMediaSourceId: streamId
-            }
+    const videoConstraint = {
+        mandatory: {
+            chromeMediaSource: mediaSourceType,
+            chromeMediaSourceId: streamId
         }
     };
+
+    if (options.videoFps) {
+        videoConstraint.mandatory.maxFrameRate = options.videoFps;
+    }
+
+    const fullConstraints = { video: videoConstraint };
+
+    if (options.recordSystemAudio !== false) {
+        fullConstraints.audio = {
+            mandatory: {
+                chromeMediaSource: mediaSourceType,
+                chromeMediaSourceId: streamId
+            }
+        };
+    }
 
     try {
         desktopStream = await navigator.mediaDevices.getUserMedia(fullConstraints);
     } catch (e) {
-        const audioErr = formatMediaError(e, `${mediaSourceType} Audio Constraint`);
-        console.warn(`${mediaSourceType} capture with audio constraint failed. Retrying video-only capture...`, audioErr.formatted);
-        
-        const videoOnlyConstraints = {
-            video: {
-                mandatory: {
-                    chromeMediaSource: mediaSourceType,
-                    chromeMediaSourceId: streamId
-                }
+        if (fullConstraints.audio) {
+            console.warn("Capture with audio failed. Retrying video-only capture...");
+            const videoOnlyConstraints = { video: videoConstraint };
+            try {
+                desktopStream = await navigator.mediaDevices.getUserMedia(videoOnlyConstraints);
+                chrome.runtime.sendMessage({
+                    type: "recording-warning",
+                    warning: { message: "System audio capture unavailable. Recording video-only." }
+                }).catch(() => { });
+            } catch (err2) {
+                const finalErr = formatMediaError(err2, "Screen Video-Only Capture");
+                cleanupStreams();
+                state = "ERROR";
+                chrome.runtime.sendMessage({ type: "recording-error", error: finalErr }).catch(() => { });
+                state = "IDLE";
+                return;
             }
-        };
-
-        try {
-            desktopStream = await navigator.mediaDevices.getUserMedia(videoOnlyConstraints);
-        } catch (err2) {
-            const finalErr = formatMediaError(err2, `${mediaSourceType} Video-Only Capture`);
-            console.error(`Failed to start ${mediaSourceType} capture:`, finalErr.formatted);
+        } else {
+            const finalErr = formatMediaError(e, "Screen Capture");
             cleanupStreams();
-            chrome.runtime.sendMessage({ type: "recording-error", error: finalErr }).catch(() => {});
+            state = "ERROR";
+            chrome.runtime.sendMessage({ type: "recording-error", error: finalErr }).catch(() => { });
+            state = "IDLE";
             return;
         }
     }
@@ -209,7 +204,8 @@ async function startRecording(streamId, options = {}) {
     if (videoTracks.length === 0) {
         const noVideoErr = formatMediaError(new Error("No video track found in captured stream"), "Stream Inspection");
         cleanupStreams();
-        chrome.runtime.sendMessage({ type: "recording-error", error: noVideoErr }).catch(() => {});
+        state = "IDLE";
+        chrome.runtime.sendMessage({ type: "recording-error", error: noVideoErr }).catch(() => { });
         return;
     }
     const videoTrack = videoTracks[0];
@@ -219,7 +215,7 @@ async function startRecording(streamId, options = {}) {
 
     const finalTracks = [videoTrack];
 
-    // 3. Audio track composition & mixing
+    // 3. Audio composition & mixing (only use AudioContext when BOTH system audio and mic are present)
     if (micTrack && systemAudioTrack) {
         try {
             activeAudioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -241,8 +237,7 @@ async function startRecording(streamId, options = {}) {
                 finalTracks.push(mixedAudioTrack);
             }
         } catch (mixErr) {
-            const mixFormatted = formatMediaError(mixErr, "AudioContext Mixing");
-            console.warn("Audio mixing failed, falling back to system audio or mic:", mixFormatted.formatted);
+            console.warn("Audio mixing failed, falling back to system audio or mic:", formatMediaError(mixErr).formatted);
             if (systemAudioTrack) {
                 finalTracks.push(systemAudioTrack);
             } else if (micTrack) {
@@ -259,25 +254,29 @@ async function startRecording(streamId, options = {}) {
 
     // Auto-stop recording if user stops sharing via Chrome native UI bar
     videoTrack.addEventListener('ended', () => {
-        console.log("Desktop capture video track ended externally.");
+        console.log("Desktop capture video track ended natively.");
         stopRecording();
     });
 
     const selectedMimeType = getSupportedMimeType();
-    console.log("Selected MediaRecorder MIME type:", selectedMimeType || "Default");
+    const videoBps = getQualityBps(options.videoQuality);
 
     try {
-        const recorderOptions = selectedMimeType ? { mimeType: selectedMimeType } : {};
+        const recorderOptions = {};
+        if (selectedMimeType) recorderOptions.mimeType = selectedMimeType;
+        if (videoBps) recorderOptions.videoBitsPerSecond = videoBps;
+
         recorder = new MediaRecorder(activeStream, recorderOptions);
     } catch (recorderInitErr) {
         const recErr = formatMediaError(recorderInitErr, "MediaRecorder Construction");
-        console.error("Failed to create MediaRecorder:", recErr.formatted);
         cleanupStreams();
-        chrome.runtime.sendMessage({ type: "recording-error", error: recErr }).catch(() => {});
+        state = "IDLE";
+        chrome.runtime.sendMessage({ type: "recording-error", error: recErr }).catch(() => { });
         return;
     }
 
     recordedChunks = [];
+    startTime = Date.now();
 
     recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -288,11 +287,15 @@ async function startRecording(streamId, options = {}) {
     recorder.onerror = (event) => {
         const recRuntimeErr = formatMediaError(event.error || new Error("MediaRecorder runtime error"), "MediaRecorder Runtime");
         console.error("MediaRecorder error event:", recRuntimeErr.formatted);
-        chrome.runtime.sendMessage({ type: "recording-error", error: recRuntimeErr }).catch(() => {});
+        chrome.runtime.sendMessage({ type: "recording-error", error: recRuntimeErr }).catch(() => { });
     };
 
     recorder.onstop = async () => {
+        if (state === "FINALIZING" || state === "IDLE") return;
+        state = "FINALIZING";
         console.log("MediaRecorder stopped. Processing recording chunks...");
+
+        const duration = Math.max(1, Math.round((Date.now() - startTime) / 1000));
         const mimeTypeHeader = recorder.mimeType || selectedMimeType || "video/webm";
         const blobType = mimeTypeHeader.split(";")[0] || "video/webm";
         const blob = new Blob(recordedChunks, { type: blobType });
@@ -300,45 +303,89 @@ async function startRecording(streamId, options = {}) {
         cleanupStreams();
         recordedChunks = [];
 
+        if (blob.size === 0) {
+            const err = formatMediaError(new Error("Recording contains no video data."), "Validation");
+            state = "IDLE";
+            chrome.runtime.sendMessage({ type: "recording-error", error: err }).catch(() => { });
+            return;
+        }
+
+        const videoSettings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+        const width = videoSettings.width || 1920;
+        const height = videoSettings.height || 1080;
+        const filename = formatRecordingFilename(new Date(), blobType);
+
+        const recordingEntry = {
+            id: `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            blob: blob,
+            createdAt: Date.now(),
+            duration: duration,
+            recordingType: options.captureType || 'desktop',
+            resolution: `${width}x${height}`,
+            fps: options.videoFps || 30,
+            audioEnabled: Boolean(systemAudioTrack),
+            micEnabled: Boolean(micTrack),
+            fileSize: blob.size,
+            mimeType: mimeTypeHeader,
+            filename: filename
+        };
+
         try {
-            await saveRecording(blob);
-            chrome.runtime.sendMessage({ type: "recording-finished" }).catch(() => {});
+            await saveRecordingEntry(recordingEntry);
+            state = "IDLE";
+            chrome.runtime.sendMessage({ type: "recording-finished", id: recordingEntry.id }).catch(() => { });
         } catch (err) {
             const saveErr = formatMediaError(err, "IndexedDB Save");
             console.error("Failed to save recording blob:", saveErr.formatted);
-            chrome.runtime.sendMessage({ type: "recording-error", error: saveErr }).catch(() => {});
+            state = "IDLE";
+            chrome.runtime.sendMessage({ type: "recording-error", error: saveErr }).catch(() => { });
         }
     };
 
-    recorder.start();
+    // 1-second timeslice for optimal RAM usage and chunk collection
+    recorder.start(1000);
+    state = "RECORDING";
+
     chrome.runtime.sendMessage({
         type: "recording-started",
         mimeType: selectedMimeType
-    }).catch(() => {});
+    }).catch(() => { });
 }
 
 function stopRecording() {
+    if (state !== "RECORDING" && state !== "PAUSED") {
+        cleanupStreams();
+        state = "IDLE";
+        return;
+    }
+
+    state = "STOPPING";
     if (recorder && recorder.state !== "inactive") {
         try {
             recorder.stop();
         } catch (e) {
             console.error("Error stopping MediaRecorder:", e);
             cleanupStreams();
+            state = "IDLE";
         }
     } else {
         cleanupStreams();
+        state = "IDLE";
     }
 }
 
 function cancelRecording() {
+    state = "STOPPING";
     if (recorder && recorder.state !== "inactive") {
-        recorder.onstop = null; // Do not save or emit finished
+        recorder.onstop = null; // Prevent saving
         try {
             recorder.stop();
-        } catch (e) {}
+        } catch (e) { }
     }
     cleanupStreams();
     recordedChunks = [];
+    state = "IDLE";
+    chrome.runtime.sendMessage({ type: "recording-cancelled" }).catch(() => { });
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -370,6 +417,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (recorder && recorder.state === "recording") {
             try {
                 recorder.pause();
+                state = "PAUSED";
+                chrome.runtime.sendMessage({ type: "recording-paused" }).catch(() => { });
                 sendResponse({ success: true });
             } catch (e) {
                 sendResponse({ error: formatMediaError(e, "Pause").formatted });
@@ -384,6 +433,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (recorder && recorder.state === "paused") {
             try {
                 recorder.resume();
+                state = "RECORDING";
+                chrome.runtime.sendMessage({ type: "recording-resumed" }).catch(() => { });
                 sendResponse({ success: true });
             } catch (e) {
                 sendResponse({ error: formatMediaError(e, "Resume").formatted });
@@ -391,6 +442,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         } else {
             sendResponse({ error: "Recorder is not currently paused" });
         }
+        return true;
+    }
+
+    if (message.type === "toggle-pause-recording") {
+        if (recorder) {
+            if (recorder.state === "recording") {
+                recorder.pause();
+                state = "PAUSED";
+                chrome.runtime.sendMessage({ type: "recording-paused" }).catch(() => { });
+            } else if (recorder.state === "paused") {
+                recorder.resume();
+                state = "RECORDING";
+                chrome.runtime.sendMessage({ type: "recording-resumed" }).catch(() => { });
+            }
+        }
+        sendResponse({ success: true });
         return true;
     }
 });

@@ -1,3 +1,5 @@
+import { getSettings } from "./scripts/settings.js";
+
 function blobToDataUrl(blob) {
     return blob.arrayBuffer().then((buffer) => {
         const bytes = new Uint8Array(buffer);
@@ -95,11 +97,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "start-recording") {
         (async () => {
             try {
-                await startScreenRecording(message.audio);
+                const settings = await getSettings();
+                const recordOptions = message.options ? { ...settings, ...message.options } : settings;
+                await startScreenRecording(recordOptions);
                 sendResponse({ ok: true });
             } catch (error) {
                 const errorMsg = (typeof error === 'object' && error !== null)
-                    ? (error.formatted || `${error.name || 'Error'}: ${error.message || String(error)}`)
+                    ? (error.formatted || error.message || String(error))
                     : String(error);
                 sendResponse({ error: errorMsg });
             }
@@ -107,34 +111,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "recording-finished" || message.type === "recording-error") {
-        closeOffscreenDocument();
+    if (message.type === "recording-finished" || message.type === "recording-error" || message.type === "recording-cancelled") {
+        if (message.type === "recording-finished" || message.type === "recording-cancelled" || message.type === "recording-error") {
+            closeOffscreenDocument();
+        }
+        
         // Forward to active tab so UI cleans up safely
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]?.id) safeSendMessageToTab(tabs[0].id, message);
         });
         
         if (message.type === "recording-finished") {
-            chrome.tabs.create({ url: chrome.runtime.getURL("preview/preview.html") });
+            const previewUrl = message.id 
+                ? chrome.runtime.getURL(`preview/preview.html?id=${encodeURIComponent(message.id)}`)
+                : chrome.runtime.getURL("preview/preview.html");
+            chrome.tabs.create({ url: previewUrl });
         }
         return;
     }
 
-    if (message.type === "recording-started") {
+    if (message.type === "recording-started" || message.type === "recording-paused" || message.type === "recording-resumed" || message.type === "recording-warning") {
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
             if (tabs[0]?.id) {
-                try {
-                    await chrome.scripting.insertCSS({
-                        target: { tabId: tabs[0].id },
-                        files: ["scripts/recording-ui.css"]
-                    });
-                    await chrome.scripting.executeScript({
-                        target: { tabId: tabs[0].id },
-                        files: ["scripts/recording-ui.js"]
-                    });
-                } catch (err) {
-                    console.warn("Could not inject recording UI into tab:", err);
+                if (message.type === "recording-started") {
+                    try {
+                        await chrome.scripting.insertCSS({
+                            target: { tabId: tabs[0].id },
+                            files: ["scripts/recording-ui.css"]
+                        });
+                        await chrome.scripting.executeScript({
+                            target: { tabId: tabs[0].id },
+                            files: ["scripts/recording-ui.js"]
+                        });
+                    } catch (err) {
+                        console.warn("Could not inject recording UI into tab:", err);
+                    }
                 }
+                safeSendMessageToTab(tabs[0].id, message);
             }
         });
         return;
@@ -190,14 +203,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
-    if (command !== "start-screenshot") {
-        return;
-    }
-
-    try {
-        await startScreenshotInActiveTab();
-    } catch (error) {
-        console.error("Failed to start screenshot from keyboard shortcut.", error);
+    if (command === "start-screenshot") {
+        try {
+            await startScreenshotInActiveTab();
+        } catch (error) {
+            console.error("Failed to start screenshot from keyboard shortcut.", error);
+        }
+    } else if (command === "start-recording") {
+        try {
+            const settings = await getSettings();
+            await startScreenRecording(settings);
+        } catch (error) {
+            console.error("Failed to start recording from keyboard shortcut.", error);
+        }
+    } else if (command === "toggle-pause-recording") {
+        chrome.runtime.sendMessage({ target: 'offscreen', type: 'toggle-pause-recording' }).catch(() => {});
+    } else if (command === "stop-recording") {
+        chrome.runtime.sendMessage({ target: 'offscreen', type: 'stop-recording' }).catch(() => {});
     }
 });
 
@@ -233,7 +255,7 @@ async function closeOffscreenDocument() {
     await chrome.offscreen.closeDocument();
 }
 
-async function startScreenRecording(recordAudio) {
+async function startScreenRecording(options = {}) {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     const targetTab = tabs.length > 0 ? tabs[0] : null;
 
@@ -261,6 +283,6 @@ async function startScreenRecording(recordAudio) {
         target: 'offscreen',
         type: 'start-recording',
         streamId: streamId,
-        options: { audio: recordAudio }
+        options: options
     });
 }

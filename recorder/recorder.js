@@ -1,6 +1,7 @@
-const DB_NAME = 'QuickShotDB';
-const DB_VERSION = 1;
+import { saveRecordingEntry } from "../scripts/db.js";
+import { getSettings, getQualityBps, formatRecordingFilename } from "../scripts/settings.js";
 
+let state = "IDLE";
 let recorder = null;
 let recordedChunks = [];
 let activeStream = null;
@@ -12,6 +13,7 @@ let activeAudioSources = [];
 let timerInterval = null;
 let seconds = 0;
 let isPaused = false;
+let startTime = 0;
 
 function formatMediaError(err, context = "") {
     if (!err) {
@@ -30,6 +32,10 @@ function formatMediaError(err, context = "") {
         message = err.message || err.reason || String(err);
     } else {
         message = String(err);
+    }
+
+    if (name === "NotAllowedError" || message.includes("Permission denied") || message.includes("user canceled")) {
+        message = "Capture permission was denied or cancelled by user.";
     }
 
     let fullText = `${name}: ${message}`;
@@ -103,33 +109,6 @@ function cleanupStreams() {
     }
 }
 
-function saveRecording(blob) {
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
-        req.onupgradeneeded = () => {
-            const db = req.result;
-            if (!db.objectStoreNames.contains('recordings')) {
-                db.createObjectStore('recordings');
-            }
-        };
-        req.onsuccess = () => {
-            const db = req.result;
-            const tx = db.transaction('recordings', 'readwrite');
-            const store = tx.objectStore('recordings');
-            store.put(blob, 'latest');
-            tx.oncomplete = () => {
-                db.close();
-                resolve();
-            };
-            tx.onerror = () => {
-                db.close();
-                reject(tx.error);
-            };
-        };
-        req.onerror = () => reject(req.error);
-    });
-}
-
 const startBtn = document.getElementById('start-btn');
 const statusBox = document.getElementById('status-box');
 const warningBox = document.getElementById('warning-box');
@@ -143,7 +122,7 @@ const cancelBtn = document.getElementById('cancel-btn');
 function updateTimerDisplay() {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
-    timerText.textContent = `${m}:${s}`;
+    if (timerText) timerText.textContent = `${m}:${s}`;
 }
 
 function startTimer() {
@@ -164,36 +143,34 @@ function stopTimer() {
     timerInterval = null;
 }
 
-async function getSettings() {
-    try {
-        return await chrome.storage.sync.get({ recordAudio: false });
-    } catch (e) {
-        return { recordAudio: false };
-    }
-}
-
 async function handleStartCapture() {
-    warningBox.style.display = 'none';
-    warningBox.textContent = '';
-    statusBox.textContent = 'Requesting screen capture permission...';
+    if (state !== "IDLE") return;
+    state = "PREPARING";
+
+    if (warningBox) {
+        warningBox.style.display = 'none';
+        warningBox.textContent = '';
+    }
+    if (statusBox) statusBox.textContent = 'Requesting screen capture permission...';
 
     const settings = await getSettings();
 
-    // 1. Trigger getDisplayMedia (must be in user activation stack)
+    // 1. Trigger getDisplayMedia
     let displayStream = null;
+    const videoConstraint = { video: true };
+    if (settings.videoFps) {
+        videoConstraint.video = { frameRate: settings.videoFps };
+    }
+
     try {
         displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: true
+            ...videoConstraint,
+            audio: settings.recordSystemAudio !== false
         });
     } catch (err) {
         const errFormatted = formatMediaError(err, "getDisplayMedia");
-        if (err.name === 'NotAllowedError' || err.message.includes('Permission denied') || err.message.includes('user canceled')) {
-            statusBox.textContent = 'Capture cancelled by user.';
-        } else {
-            statusBox.textContent = `Capture failed: ${errFormatted.formatted}`;
-            console.error("getDisplayMedia error:", errFormatted);
-        }
+        if (statusBox) statusBox.textContent = errFormatted.message;
+        state = "IDLE";
         return;
     }
 
@@ -201,15 +178,16 @@ async function handleStartCapture() {
 
     const videoTracks = displayStream.getVideoTracks();
     if (videoTracks.length === 0) {
-        statusBox.textContent = 'Error: No video track returned by screen capture.';
+        if (statusBox) statusBox.textContent = 'Error: No video track returned by screen capture.';
         cleanupStreams();
+        state = "IDLE";
         return;
     }
     const videoTrack = videoTracks[0];
 
-    // 2. Microphone stream (optional)
+    // 2. Microphone stream
     let micTrack = null;
-    if (settings.recordAudio) {
+    if (settings.recordMic) {
         try {
             activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const micTracks = activeMicStream.getAudioTracks();
@@ -219,18 +197,20 @@ async function handleStartCapture() {
         } catch (micErr) {
             const formattedMicErr = formatMediaError(micErr, "Microphone Access");
             console.warn("Microphone access permission denied or unavailable:", formattedMicErr.formatted);
-            warningBox.textContent = `Microphone notice (${formattedMicErr.name}): ${formattedMicErr.message}. Continuing recording without microphone audio.`;
-            warningBox.style.display = 'block';
+            if (warningBox) {
+                warningBox.textContent = `Microphone notice: ${formattedMicErr.message}. Continuing recording without microphone audio.`;
+                warningBox.style.display = 'block';
+            }
         }
     }
 
-    // 3. System audio track from display capture
+    // 3. System audio track
     const systemAudioTracks = displayStream.getAudioTracks();
     const systemAudioTrack = systemAudioTracks.length > 0 ? systemAudioTracks[0] : null;
 
     const finalTracks = [videoTrack];
 
-    // 4. Mix or attach audio
+    // 4. Mix or attach audio (AudioContext mixing only when BOTH system audio and mic exist)
     if (micTrack && systemAudioTrack) {
         try {
             activeAudioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -271,19 +251,24 @@ async function handleStartCapture() {
     });
 
     const selectedMimeType = getSupportedMimeType();
-    console.log("Selected MediaRecorder MIME type:", selectedMimeType || "Default");
+    const videoBps = getQualityBps(settings.videoQuality);
 
     try {
-        const recorderOptions = selectedMimeType ? { mimeType: selectedMimeType } : {};
+        const recorderOptions = {};
+        if (selectedMimeType) recorderOptions.mimeType = selectedMimeType;
+        if (videoBps) recorderOptions.videoBitsPerSecond = videoBps;
+
         recorder = new MediaRecorder(activeStream, recorderOptions);
     } catch (recInitErr) {
         const formattedRecErr = formatMediaError(recInitErr, "MediaRecorder Construction");
-        statusBox.textContent = `Error creating recorder: ${formattedRecErr.formatted}`;
+        if (statusBox) statusBox.textContent = `Error creating recorder: ${formattedRecErr.formatted}`;
         cleanupStreams();
+        state = "IDLE";
         return;
     }
 
     recordedChunks = [];
+    startTime = Date.now();
 
     recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
@@ -293,13 +278,16 @@ async function handleStartCapture() {
 
     recorder.onerror = (e) => {
         const errFmt = formatMediaError(e.error || new Error("Recorder error"), "MediaRecorder Runtime");
-        statusBox.textContent = `Recording error: ${errFmt.formatted}`;
+        if (statusBox) statusBox.textContent = `Recording error: ${errFmt.formatted}`;
     };
 
     recorder.onstop = async () => {
-        statusBox.textContent = 'Finalizing and saving recording...';
+        if (state === "FINALIZING" || state === "IDLE") return;
+        state = "FINALIZING";
+        if (statusBox) statusBox.textContent = 'Finalizing and saving recording...';
         stopTimer();
 
+        const duration = Math.max(1, Math.round((Date.now() - startTime) / 1000));
         const mimeTypeHeader = recorder.mimeType || selectedMimeType || "video/webm";
         const blobType = mimeTypeHeader.split(";")[0] || "video/webm";
         const blob = new Blob(recordedChunks, { type: blobType });
@@ -307,22 +295,51 @@ async function handleStartCapture() {
         cleanupStreams();
         recordedChunks = [];
 
+        if (blob.size === 0) {
+            if (statusBox) statusBox.textContent = 'Error: Recording is empty.';
+            state = "IDLE";
+            return;
+        }
+
+        const videoSettings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+        const width = videoSettings.width || 1920;
+        const height = videoSettings.height || 1080;
+        const filename = formatRecordingFilename(new Date(), blobType);
+
+        const recordingEntry = {
+            id: `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            blob: blob,
+            createdAt: Date.now(),
+            duration: duration,
+            recordingType: 'desktop',
+            resolution: `${width}x${height}`,
+            fps: settings.videoFps || 30,
+            audioEnabled: Boolean(systemAudioTrack),
+            micEnabled: Boolean(micTrack),
+            fileSize: blob.size,
+            mimeType: mimeTypeHeader,
+            filename: filename
+        };
+
         try {
-            await saveRecording(blob);
-            statusBox.textContent = 'Recording saved! Opening preview...';
-            window.location.href = chrome.runtime.getURL('preview/preview.html');
+            await saveRecordingEntry(recordingEntry);
+            state = "IDLE";
+            if (statusBox) statusBox.textContent = 'Recording saved! Opening preview...';
+            window.location.href = chrome.runtime.getURL(`preview/preview.html?id=${recordingEntry.id}`);
         } catch (saveErr) {
             const errFmt = formatMediaError(saveErr, "IndexedDB Save");
-            statusBox.textContent = `Failed to save recording: ${errFmt.formatted}`;
+            state = "IDLE";
+            if (statusBox) statusBox.textContent = `Failed to save recording: ${errFmt.formatted}`;
         }
     };
 
-    recorder.start();
+    recorder.start(1000);
     startTimer();
+    state = "RECORDING";
 
-    statusBox.textContent = 'Recording in progress...';
-    startBtn.classList.add('hidden');
-    recordingControls.classList.remove('hidden');
+    if (statusBox) statusBox.textContent = 'Recording in progress...';
+    if (startBtn) startBtn.classList.add('hidden');
+    if (recordingControls) recordingControls.classList.remove('hidden');
 }
 
 function handlePauseResume() {
@@ -330,17 +347,23 @@ function handlePauseResume() {
     if (recorder.state === 'recording') {
         recorder.pause();
         isPaused = true;
-        pauseBtn.textContent = 'Resume';
-        recordingDot.style.animation = 'none';
-        recordingDot.style.opacity = '0.5';
-        statusBox.textContent = 'Recording paused';
+        state = "PAUSED";
+        if (pauseBtn) pauseBtn.textContent = 'Resume';
+        if (recordingDot) {
+            recordingDot.style.animation = 'none';
+            recordingDot.style.opacity = '0.5';
+        }
+        if (statusBox) statusBox.textContent = 'Recording paused';
     } else if (recorder.state === 'paused') {
         recorder.resume();
         isPaused = false;
-        pauseBtn.textContent = 'Pause';
-        recordingDot.style.animation = 'pulse 1.5s infinite';
-        recordingDot.style.opacity = '1';
-        statusBox.textContent = 'Recording in progress...';
+        state = "RECORDING";
+        if (pauseBtn) pauseBtn.textContent = 'Pause';
+        if (recordingDot) {
+            recordingDot.style.animation = 'pulse 1.5s infinite';
+            recordingDot.style.opacity = '1';
+        }
+        if (statusBox) statusBox.textContent = 'Recording in progress...';
     }
 }
 
@@ -351,9 +374,11 @@ function handleStopCapture() {
             recorder.stop();
         } catch (e) {
             cleanupStreams();
+            state = "IDLE";
         }
     } else {
         cleanupStreams();
+        state = "IDLE";
     }
 }
 
@@ -365,18 +390,18 @@ function handleCancelCapture() {
     }
     cleanupStreams();
     recordedChunks = [];
+    state = "IDLE";
 
-    statusBox.textContent = 'Recording cancelled.';
-    recordingControls.classList.add('hidden');
-    startBtn.classList.remove('hidden');
+    if (statusBox) statusBox.textContent = 'Recording cancelled.';
+    if (recordingControls) recordingControls.classList.add('hidden');
+    if (startBtn) startBtn.classList.remove('hidden');
 }
 
-startBtn.addEventListener('click', handleStartCapture);
-pauseBtn.addEventListener('click', handlePauseResume);
-stopBtn.addEventListener('click', handleStopCapture);
-cancelBtn.addEventListener('click', handleCancelCapture);
+if (startBtn) startBtn.addEventListener('click', handleStartCapture);
+if (pauseBtn) pauseBtn.addEventListener('click', handlePauseResume);
+if (stopBtn) stopBtn.addEventListener('click', handleStopCapture);
+if (cancelBtn) cancelBtn.addEventListener('click', handleCancelCapture);
 
-// Check if auto-start parameter is passed in URL
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('auto') === 'true') {
     handleStartCapture();

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>QuickShot – Recording History</title>
+    <style>
+        :root {
+            --bg: #0f0f11;
+            --surface: #1a1a1f;
+            --surface2: #22222a;
+            --surface3: #2c2c38;
+            --accent: #6c63ff;
+            --accent-glow: rgba(108,99,255,0.2);
+            --text: #f0f0f5;
+            --text-muted: #888;
+            --text-dim: #555;
+            --danger: #ef5350;
+            --success: #43a047;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { height: 100%; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .app-header {
+            position: sticky;
+            top: 0;
+            background: rgba(15, 15, 17, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            z-index: 100;
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .app-header .logo {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #a78bfa, #6c63ff 60%, #4fc3f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .app-header .page-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-new-rec {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            font-family: inherit;
+        }
+
+        .btn-new-rec:hover { opacity: 0.85; transform: translateY(-1px); }
+
+        /* Toolbar */
+        .toolbar {
+            padding: 16px 28px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .search-wrap input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 13px;
+            padding: 9px 12px 9px 36px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .search-wrap input:focus {
+            border-color: var(--accent);
+        }
+
+        select {
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 13px;
+            padding: 9px 12px;
+            outline: none;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-appearance: none;
+        }
+
+        .count-badge {
+            margin-left: auto;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* Grid */
+        .recordings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            padding: 24px 28px 40px;
+        }
+
+        /* Card */
+        .recording-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .recording-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+            border-color: rgba(108,99,255,0.25);
+        }
+
+        .card-thumb {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: var(--surface3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .thumb-placeholder {
+            font-size: 2.5rem;
+            opacity: 0.4;
+        }
+
+        .card-body {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .card-filename {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+        }
+
+        .card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .type-badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        .type-desktop { background: rgba(108,99,255,0.2); color: #a78bfa; }
+        .type-tab { background: rgba(79,195,247,0.2); color: #4fc3f7; }
+        .type-window { background: rgba(67,160,71,0.2); color: #66bb6a; }
+
+        .meta-item {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .card-date {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .card-btn {
+            flex: 1;
+            padding: 7px;
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 6px;
+            background: var(--surface2);
+            color: var(--text);
+            font-size: 15px;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+            font-family: inherit;
+        }
+
+        .card-btn:hover {
+            background: var(--surface3);
+            border-color: rgba(255,255,255,0.15);
+            transform: scale(1.05);
+        }
+
+        .card-btn.btn-delete:hover { border-color: var(--danger); }
+
+        /* Empty State */
+        .empty-state {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            opacity: 0.4;
+        }
+
+        .empty-state h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-dim);
+            max-width: 280px;
+        }
+
+        .btn-start-recording {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            font-family: inherit;
+            transition: opacity 0.15s;
+        }
+
+        .btn-start-recording:hover { opacity: 0.85; }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo">QuickShot</div>
+        <span class="page-title">/ History</span>
+        <div class="header-actions">
+            <button class="btn-new-rec" id="new-rec-btn">+ New Recording</button>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="Search recordings...">
+        </div>
+        <select id="filter-type">
+            <option value="all">All Types</option>
+            <option value="desktop">Screen</option>
+            <option value="window">Window</option>
+            <option value="tab">Tab</option>
+        </select>
+        <select id="sort-order">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+        </select>
+        <span class="count-badge" id="recording-count">—</span>
+    </div>
+
+    <div class="recordings-grid" id="recordings-grid">
+        <div class="empty-state">
+            <div class="empty-icon">⏳</div>
+            <h2>Loading...</h2>
+        </div>
+    </div>
+
+    <script src="history.js"></script>
+</body>
+</html>

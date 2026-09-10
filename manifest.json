@@ -14,6 +14,27 @@
         "mac": "Command+Shift+S"
       },
       "description": "Start a QuickShot capture"
+    },
+    "start-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R",
+        "mac": "Command+Shift+R"
+      },
+      "description": "Start Screen Recording"
+    },
+    "toggle-pause-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Pause or Resume Recording"
+    },
+    "stop-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Stop Recording"
     }
   },
   "action": {

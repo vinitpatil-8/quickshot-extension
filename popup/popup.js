@@ -1,26 +1,6 @@
+import { getSettings, saveSetting, DEFAULT_SETTINGS } from "../scripts/settings.js";
+
 (async () => {
-  async function getSettings() {
-    try {
-      return await chrome.storage.sync.get({
-        theme: "system",
-        autoCopy: false,
-        autoDownload: false,
-        recordAudio: false
-      });
-    } catch (error) {
-      console.error("Failed to load settings:", error);
-      return { theme: "system", autoCopy: false, autoDownload: false, recordAudio: false };
-    }
-  }
-
-  async function saveSetting(key, value) {
-    try {
-      await chrome.storage.sync.set({ [key]: value });
-    } catch (error) {
-      console.error(`Failed to save setting "${key}":`, error);
-    }
-  }
-
   const settings = await getSettings();
 
   const headerSection = document.querySelector(".top");
@@ -36,6 +16,10 @@
   const lightOpt = document.querySelector("#light");
   const copyDirect = document.querySelector("#copyDirect");
   const downDirect = document.querySelector("#downDirect");
+  const recordSystemAudio = document.querySelector("#recordSystemAudio");
+  const recordMic = document.querySelector("#recordMic");
+  const videoQuality = document.querySelector("#videoQuality");
+  const videoFps = document.querySelector("#videoFps");
 
   document.querySelector("#screenshotBtn").addEventListener("click", async () => {
     try {
@@ -60,6 +44,15 @@
       window.close();
     } catch (error) {
       console.error("Failed to open recorder tab:", error);
+    }
+  });
+
+  document.querySelector("#historyBtn").addEventListener("click", async () => {
+    try {
+      await chrome.tabs.create({ url: chrome.runtime.getURL("history/history.html") });
+      window.close();
+    } catch (error) {
+      console.error("Failed to open history tab:", error);
     }
   });
 
@@ -113,35 +106,48 @@
     saveSetting("autoDownload", downDirect.checked);
   });
 
+  if (recordSystemAudio) {
+    recordSystemAudio.addEventListener("change", () => {
+      saveSetting("recordSystemAudio", recordSystemAudio.checked);
+    });
+  }
+
+  if (recordMic) {
+    recordMic.addEventListener("change", () => {
+      saveSetting("recordMic", recordMic.checked);
+    });
+  }
+
+  if (videoQuality) {
+    videoQuality.addEventListener("change", () => {
+      saveSetting("videoQuality", videoQuality.value);
+    });
+  }
+
+  if (videoFps) {
+    videoFps.addEventListener("change", () => {
+      saveSetting("videoFps", parseInt(videoFps.value, 10));
+    });
+  }
+
+  // Apply saved settings to UI
   switch (settings.theme) {
     case "dark":
       darkOpt.checked = true;
       break;
-
     case "light":
       lightOpt.checked = true;
       break;
-
     default:
       systemOpt.checked = true;
   }
 
-  if (settings.autoCopy) {
-    copyDirect.checked = true;
-  }
-
-  if (settings.autoDownload) {
-    downDirect.checked = true;
-  }
-
-  const recordAudio = document.querySelector("#recordAudio");
-  if (settings.recordAudio) {
-    recordAudio.checked = true;
-  }
-
-  recordAudio.addEventListener("change", () => {
-    saveSetting("recordAudio", recordAudio.checked);
-  });
+  if (settings.autoCopy) copyDirect.checked = true;
+  if (settings.autoDownload) downDirect.checked = true;
+  if (recordSystemAudio) recordSystemAudio.checked = settings.recordSystemAudio !== false;
+  if (recordMic) recordMic.checked = Boolean(settings.recordMic);
+  if (videoQuality) videoQuality.value = settings.videoQuality || 'medium';
+  if (videoFps) videoFps.value = String(settings.videoFps || 30);
 
   applyTheme(settings.theme);
 

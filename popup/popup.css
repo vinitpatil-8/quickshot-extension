@@ -149,8 +149,8 @@ body {
   text-align: center;
   cursor: default;
   min-height: fit-content;
-  height: 80px;
-  max-height: 100px;
+  height: auto;
+  max-height: none;
   width: 100%;
   gap: 10px;
 }
@@ -271,4 +271,25 @@ a {
 }
 .none{
   display: none;
+}
+
+.uispan-row {
+  justify-content: center;
+  gap: 8px;
+}
+
+.settings-select {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: var(--primary-text);
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+
+.settings-select:focus {
+  border-color: var(--primary-button);
 }
