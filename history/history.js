@@ -66,7 +66,7 @@ function renderEmpty() {
     if (count) count.textContent = '0 recordings';
     grid.innerHTML = `
         <div class="empty-state">
-            <div class="empty-icon">🎬</div>
+            <div class="empty-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="4" stroke="currentColor" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="4" stroke="currentColor" stroke-width="2"/></svg></div>
             <h2>No recordings yet</h2>
             <p>Start a screen recording from the QuickShot popup.</p>
             <button class="btn-start-recording" id="start-rec-btn">Start Recording</button>
@@ -87,13 +87,13 @@ function createRecordingCard(recording) {
 
     const typeLabel = getTypeLabel(recording.recordingType);
     const audioInfo = [
-        recording.audioEnabled ? '🔊' : '',
-        recording.micEnabled ? '🎙' : ''
+        recording.audioEnabled ? '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4a2 2 0 012 2v6.5l5.5 4V6a2 2 0 00-2-2h-5V4z"/><path d="M12 14a4 4 0 100-8 4 4 0 000 8z"/></svg>' : '',
+        recording.micEnabled ? '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 14a2 2 0 002-2v-4a2 2 0 00-2-2h-3V6a2 2 0 00-2-2v2H6a2 2 0 00-2 2v6a2 2 0 002 2h3v4a2 2 0 002-2zm0-6a1 1 0 110 2 1 1 0 010-2z"/></svg>' : '',
     ].filter(Boolean).join(' ') || '';
 
     card.innerHTML = `
         <div class="card-thumb" id="thumb-${recording.id}">
-            <div class="thumb-placeholder">🎥</div>
+            <div class="thumb-placeholder"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="8" width="16" height="10" rx="2"/><circle cx="12" cy="4" r="2"/></svg></div>
         </div>
         <div class="card-body">
             <div class="card-filename" title="${recording.filename || ''}">${recording.filename || 'Untitled'}</div>
@@ -105,10 +105,10 @@ function createRecordingCard(recording) {
             </div>
             <div class="card-date">${formatDate(recording.createdAt)}</div>
             <div class="card-actions">
-                <button class="card-btn btn-preview" data-id="${recording.id}" title="Preview">▶</button>
-                <button class="card-btn btn-download" data-id="${recording.id}" title="Download">⬇</button>
-                <button class="card-btn btn-rename" data-id="${recording.id}" title="Rename">✏</button>
-                <button class="card-btn btn-delete" data-id="${recording.id}" title="Delete">🗑</button>
+                <button class="card-btn btn-preview" data-id="${recording.id}" title="Preview"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="8,4 8,20 17,12" fill="currentColor"/></svg></button>
+                <button class="card-btn btn-download" data-id="${recording.id}" title="Download"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v14m0 0l-6-6m6 6l6-6"/></svg></button>
+                <button class="card-btn btn-rename" data-id="${recording.id}" title="Rename"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.3 3L14 6.3L19.7 12l3.3-3.3-4.7-4.7zM2 12l3 3 9-9-3-3-9 9z"/></svg></button>
+                <button class="card-btn btn-delete" data-id="${recording.id}" title="Delete"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18M3 6v7c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6M3 6h18m-9 4v9"/></svg></button>
             </div>
         </div>
     `;
