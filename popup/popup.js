@@ -1,4 +1,4 @@
-import { getSettings, saveSetting, DEFAULT_SETTINGS } from "../scripts/settings.js";
+import { getSettings, saveSetting, DEFAULT_SETTINGS, applyThemeToDocument } from "../scripts/settings.js";
 
 (async () => {
   const settings = await getSettings();
@@ -71,6 +71,7 @@ import { getSettings, saveSetting, DEFAULT_SETTINGS } from "../scripts/settings.
   }
 
   function applyTheme(theme) {
+    applyThemeToDocument(theme);
     switch (theme) {
       case "dark":
         darkMode();

@@ -1,84 +1,111 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuickShot – Recording Preview</title>
+    <link rel="stylesheet" href="../styles/theme.css">
     <style>
-        :root {
-            --bg: #0f0f11;
-            --surface: #1a1a1f;
-            --surface2: #22222a;
-            --accent: #6c63ff;
-            --accent2: #4fc3f7;
-            --text: #f0f0f5;
-            --text-muted: #888;
-            --danger: #ef5350;
-            --success: #43a047;
-            --radius: 12px;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 24px 16px 40px;
+            padding: 24px 20px 48px;
         }
 
-        .header {
+        .preview-wrapper {
             width: 100%;
-            max-width: 1100px;
+            max-width: 1040px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Header */
+        .preview-header {
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
             gap: 12px;
-            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .header h1 {
-            font-size: 1.4rem;
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius);
+            background: var(--card);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-brand h1 {
+            font-size: 18px;
             font-weight: 700;
-            color: var(--text);
             letter-spacing: -0.02em;
+            color: var(--foreground);
         }
 
-        .header .badge {
-            background: var(--accent);
-            color: #fff;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 3px 10px;
-            letter-spacing: 0.05em;
+        /* Error Banner */
+        .error-msg {
+            display: none;
+            background: var(--destructive-subtle);
+            border: 1px solid var(--destructive-border);
+            color: var(--destructive);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            font-size: 13px;
+            font-weight: 500;
         }
 
-        .container {
-            max-width: 1100px;
+        /* Video Container */
+        .video-container {
             width: 100%;
-            display: grid;
-            gap: 20px;
+            background: #000000;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            aspect-ratio: 16 / 9;
+            max-height: 52vh;
         }
 
         video {
             width: 100%;
-            max-height: 65vh;
-            background: #000;
-            border-radius: var(--radius);
-            box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+            height: 100%;
+            object-fit: contain;
             display: block;
+            background: #000000;
+            outline: none;
         }
 
+        /* Metadata Card */
         .meta-card {
-            background: var(--surface);
+            background: var(--card);
+            border: 1px solid var(--card-border);
             border-radius: var(--radius);
-            padding: 18px 20px;
+            padding: 16px 20px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            box-shadow: var(--shadow-sm);
         }
 
         .meta-item {
@@ -88,78 +115,172 @@
         }
 
         .meta-label {
-            font-size: 10px;
-            font-weight: 700;
+            font-size: 11px;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
+            letter-spacing: 0.06em;
+            color: var(--muted-foreground);
         }
 
         .meta-value {
             font-size: 13px;
-            font-weight: 500;
-            color: var(--text);
+            font-weight: 600;
+            color: var(--foreground);
             word-break: break-all;
+            line-height: 1.3;
         }
 
+        /* Controls */
         .controls {
             display: flex;
-            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
             flex-wrap: wrap;
-            justify-content: flex-start;
+            gap: 12px;
+            padding-top: 4px;
         }
 
-        button {
-            padding: 10px 22px;
-            font-size: 14px;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
-            font-family: inherit;
+        .controls-group-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        button:hover { opacity: 0.88; transform: translateY(-1px); }
-        button:active { transform: translateY(0px); }
+        .controls-group-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-        .btn-download { background: var(--accent); color: #fff; box-shadow: 0 3px 12px rgba(108,99,255,0.3); }
-        .btn-history { background: var(--surface2); color: var(--text); }
-        .btn-discard { background: var(--danger); color: #fff; }
+        .btn-download {
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border: 1px solid var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-download:hover {
+            background: var(--primary-hover);
+        }
 
-        .error-msg {
-            display: none;
-            background: #3b1515;
-            border: 1px solid var(--danger);
-            color: #ff8a80;
-            border-radius: 8px;
-            padding: 16px;
-            font-size: 14px;
+        .btn-history {
+            background: var(--secondary);
+            color: var(--foreground);
+            border: 1px solid var(--border);
+        }
+        .btn-history:hover {
+            background: var(--accent);
+            border-color: var(--input);
+        }
+
+        .btn-discard {
+            background: transparent;
+            color: var(--destructive);
+            border: 1px solid var(--destructive-border);
+        }
+        .btn-discard:hover {
+            background: var(--destructive-subtle);
+            border-color: var(--destructive);
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 16px 12px 32px;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .controls-group-left, .controls-group-right {
+                flex-direction: column;
+                width: 100%;
+            }
+            .controls button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>QuickShot</h1>
-        <span class="badge">Preview</span>
-    </div>
-    <div class="container">
+    <main class="preview-wrapper container" id="info-container">
+        <!-- Header -->
+        <header class="preview-header header">
+            <div class="header-brand">
+                <div class="brand-icon">
+                    <img src="/assets/icn.png" width="22" height="22" alt="QuickShot">
+                </div>
+                <h1>QuickShot</h1>
+                <span class="qs-badge qs-badge-primary badge">Recording Preview</span>
+            </div>
+            <button id="history-btn" class="qs-btn qs-btn-secondary btn-history">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                View History
+            </button>
+        </header>
+
+        <!-- Error notification -->
         <div id="error-msg" class="error-msg"></div>
-        <video id="preview-video" controls autoplay></video>
-        <div class="meta-card">
-            <div class="meta-item"><span class="meta-label">Filename</span><span class="meta-value" id="meta-filename">—</span></div>
-            <div class="meta-item"><span class="meta-label">Date</span><span class="meta-value" id="meta-date">—</span></div>
-            <div class="meta-item"><span class="meta-label">Duration</span><span class="meta-value" id="meta-duration">—</span></div>
-            <div class="meta-item"><span class="meta-label">File Size</span><span class="meta-value" id="meta-size">—</span></div>
-            <div class="meta-item"><span class="meta-label">Type</span><span class="meta-value" id="meta-type">—</span></div>
-            <div class="meta-item"><span class="meta-label">Audio</span><span class="meta-value" id="meta-audio">—</span></div>
+
+        <!-- Video Player -->
+        <div class="video-container">
+            <video id="preview-video" controls autoplay playsinline></video>
         </div>
-        <div class="controls">
-            <button id="download-btn" class="btn-download"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v14m0 0l-6-6m6 6l6-6"/></svg> Download</button>
-            <button id="history-btn" class="btn-history"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> View History</button>
-            <button id="discard-btn" class="btn-discard"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18M3 6v7c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6M3 6h18m-9 4v9"/></svg> Discard</button>
-        </div>
-    </div>
-    <script src="preview.js"></script>
+
+        <!-- Metadata Information -->
+        <section class="meta-card">
+            <div class="meta-item">
+                <span class="meta-label">Filename</span>
+                <span class="meta-value" id="meta-filename">—</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Created</span>
+                <span class="meta-value" id="meta-date">—</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Duration</span>
+                <span class="meta-value" id="meta-duration">—</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">File Size</span>
+                <span class="meta-value" id="meta-size">—</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Type</span>
+                <span class="meta-value" id="meta-type">—</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Audio Tracks</span>
+                <span class="meta-value" id="meta-audio">—</span>
+            </div>
+        </section>
+
+        <!-- Action Controls -->
+        <footer class="controls">
+            <div class="controls-group-left">
+                <button id="download-btn" class="qs-btn qs-btn-primary btn-download">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download Recording
+                </button>
+            </div>
+            <div class="controls-group-right">
+                <button id="discard-btn" class="qs-btn btn-discard">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Discard
+                </button>
+            </div>
+        </footer>
+    </main>
+
+    <script type="module" src="preview.js"></script>
 </body>
 </html>

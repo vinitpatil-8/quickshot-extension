@@ -24,6 +24,7 @@ const staticFiles = [
   "history/history.html",
   "scripts/recording-ui.js",
   "scripts/recording-ui.css",
+  "styles/theme.css",
 ];
 
 const staticDirs = ["assets"];

@@ -68,3 +68,45 @@ export function sanitizeFilename(input, fallbackMime = "video/webm") {
     }
     return clean;
 }
+
+export function applyThemeToDocument(theme = "system") {
+    const root = document.documentElement;
+    if (theme === "light") {
+        root.setAttribute("data-theme", "light");
+        if (document.body) {
+            document.body.classList.remove("theme-dark");
+            document.body.classList.add("theme-light");
+        }
+    } else if (theme === "dark") {
+        root.setAttribute("data-theme", "dark");
+        if (document.body) {
+            document.body.classList.remove("theme-light");
+            document.body.classList.add("theme-dark");
+        }
+    } else {
+        root.setAttribute("data-theme", "system");
+        const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (document.body) {
+            if (isDark) {
+                document.body.classList.remove("theme-light");
+                document.body.classList.add("theme-dark");
+            } else {
+                document.body.classList.remove("theme-dark");
+                document.body.classList.add("theme-light");
+            }
+        }
+    }
+}
+
+export async function initTheme() {
+    const settings = await getSettings();
+    applyThemeToDocument(settings.theme || "system");
+    if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", async () => {
+            const current = await getSettings();
+            if ((current.theme || "system") === "system") {
+                applyThemeToDocument("system");
+            }
+        });
+    }
+}

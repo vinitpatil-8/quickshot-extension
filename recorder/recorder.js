@@ -1,5 +1,7 @@
 import { saveRecordingEntry } from "../scripts/db.js";
-import { getSettings, getQualityBps, formatRecordingFilename } from "../scripts/settings.js";
+import { getSettings, getQualityBps, formatRecordingFilename, initTheme } from "../scripts/settings.js";
+
+initTheme();
 
 let state = "IDLE";
 let recorder = null;

@@ -1,5 +1,7 @@
 import { getRecordingById, getAllRecordings, deleteRecordingEntry } from "../scripts/db.js";
-import { sanitizeFilename } from "../scripts/settings.js";
+import { sanitizeFilename, initTheme } from "../scripts/settings.js";
+
+initTheme();
 
 let videoBlob = null;
 let objectUrl = null;

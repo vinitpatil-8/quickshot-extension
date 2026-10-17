@@ -2,64 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuickShot – Recording History</title>
+    <link rel="stylesheet" href="../styles/theme.css">
     <style>
-        :root {
-            --bg: #0f0f11;
-            --surface: #1a1a1f;
-            --surface2: #22222a;
-            --surface3: #2c2c38;
-            --accent: #6c63ff;
-            --accent-glow: rgba(108,99,255,0.2);
-            --text: #f0f0f5;
-            --text-muted: #888;
-            --text-dim: #555;
-            --danger: #ef5350;
-            --success: #43a047;
-            --radius: 12px;
-            --radius-sm: 8px;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html, body { height: 100%; }
-
         body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Header */
+        /* App Header */
         .app-header {
             position: sticky;
             top: 0;
-            background: rgba(15, 15, 17, 0.95);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            background: var(--background);
+            border-bottom: 1px solid var(--border);
             z-index: 100;
-            padding: 14px 28px;
+            padding: 12px 28px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-brand .logo-wrap {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius);
+            background: var(--card);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-sm);
         }
 
         .app-header .logo {
-            font-size: 1.25rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            background: linear-gradient(135deg, #a78bfa, #6c63ff 60%, #4fc3f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .app-header .page-title {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            font-weight: 500;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--foreground);
         }
 
         .header-actions {
@@ -67,37 +59,34 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex: 0 0 auto;
         }
 
         .btn-new-rec {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-sm);
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.15s, transform 0.1s;
-            font-family: inherit;
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border: 1px solid var(--primary);
+            box-shadow: var(--shadow-sm);
         }
-
-        .btn-new-rec:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-new-rec:hover {
+            background: var(--primary-hover);
+        }
 
         /* Toolbar */
         .toolbar {
-            padding: 16px 28px;
+            padding: 14px 28px;
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
         }
 
         .search-wrap {
             position: relative;
             flex: 1;
-            min-width: 200px;
+            min-width: 220px;
         }
 
         .search-icon {
@@ -105,83 +94,70 @@
             left: 12px;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--text-dim);
-            font-size: 14px;
+            color: var(--muted-foreground);
+            display: flex;
+            align-items: center;
             pointer-events: none;
         }
 
         .search-wrap input {
             width: 100%;
-            background: var(--surface);
-            border: 1px solid rgba(255,255,255,0.07);
-            border-radius: var(--radius-sm);
-            color: var(--text);
-            font-size: 13px;
-            padding: 9px 12px 9px 36px;
-            outline: none;
-            font-family: inherit;
-            transition: border-color 0.2s;
+            padding-left: 36px;
         }
 
-        .search-wrap input:focus {
-            border-color: var(--accent);
-        }
-
-        select {
-            background: var(--surface);
-            border: 1px solid rgba(255,255,255,0.07);
-            border-radius: var(--radius-sm);
-            color: var(--text);
-            font-size: 13px;
-            padding: 9px 12px;
-            outline: none;
-            cursor: pointer;
-            font-family: inherit;
-            -webkit-appearance: none;
+        .toolbar select {
+            min-width: 130px;
         }
 
         .count-badge {
             margin-left: auto;
             font-size: 12px;
-            color: var(--text-muted);
-            font-weight: 500;
+            color: var(--muted-foreground);
+            font-weight: 600;
             white-space: nowrap;
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
         }
 
         /* Grid */
         .recordings-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
-            padding: 24px 28px 40px;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 20px;
+            padding: 24px 28px 48px;
+            flex: 1;
         }
 
         /* Card */
         .recording-card {
-            background: var(--surface);
-            border-radius: var(--radius);
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
         }
 
         .recording-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
-            border-color: rgba(108,99,255,0.25);
+            border-color: var(--ring);
+            box-shadow: var(--shadow-md);
         }
 
         .card-thumb {
             width: 100%;
-            aspect-ratio: 16/9;
-            background: var(--surface3);
+            aspect-ratio: 16 / 9;
+            background: #000000;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             position: relative;
+            border-bottom: 1px solid var(--border);
         }
 
         .card-thumb img {
@@ -192,25 +168,29 @@
         }
 
         .thumb-placeholder {
-            font-size: 2.5rem;
-            opacity: 0.4;
+            color: var(--muted-foreground);
+            opacity: 0.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .card-body {
-            padding: 14px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             flex: 1;
         }
 
         .card-filename {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
+            color: var(--foreground);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: var(--text);
+            line-height: 1.3;
         }
 
         .card-meta {
@@ -223,53 +203,94 @@
         .type-badge {
             font-size: 10px;
             font-weight: 700;
-            letter-spacing: 0.07em;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
-            padding: 2px 8px;
-            border-radius: 999px;
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
+            border: 1px solid transparent;
         }
 
-        .type-desktop { background: rgba(108,99,255,0.2); color: #a78bfa; }
-        .type-tab { background: rgba(79,195,247,0.2); color: #4fc3f7; }
-        .type-window { background: rgba(67,160,71,0.2); color: #66bb6a; }
+        .type-desktop {
+            background: rgba(59, 130, 246, 0.12);
+            color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.25);
+        }
+        .type-tab {
+            background: rgba(14, 165, 233, 0.12);
+            color: #0ea5e9;
+            border-color: rgba(14, 165, 233, 0.25);
+        }
+        .type-window {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.25);
+        }
 
         .meta-item {
             font-size: 11px;
-            color: var(--text-muted);
+            font-weight: 500;
+            color: var(--muted-foreground);
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            padding: 2px 7px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .card-date {
             font-size: 11px;
-            color: var(--text-dim);
+            color: var(--muted-foreground);
         }
 
         .card-actions {
             display: flex;
             gap: 6px;
-            margin-top: 4px;
+            margin-top: auto;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-subtle);
         }
 
         .card-btn {
             flex: 1;
-            padding: 7px;
-            border: 1px solid rgba(255,255,255,0.07);
-            border-radius: 6px;
-            background: var(--surface2);
-            color: var(--text);
-            font-size: 15px;
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--secondary);
+            color: var(--foreground);
+            font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
-            text-align: center;
-            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.15s ease;
             font-family: inherit;
         }
 
         .card-btn:hover {
-            background: var(--surface3);
-            border-color: rgba(255,255,255,0.15);
-            transform: scale(1.05);
+            background: var(--accent);
+            border-color: var(--input);
         }
 
-        .card-btn.btn-delete:hover { border-color: var(--danger); }
+        .card-btn.btn-preview {
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border-color: var(--primary);
+            flex: 1.3;
+        }
+        .card-btn.btn-preview:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+        .card-btn.btn-delete:hover {
+            background: var(--destructive-subtle);
+            color: var(--destructive);
+            border-color: var(--destructive-border);
+        }
 
         /* Empty State */
         .empty-state {
@@ -283,74 +304,122 @@
             text-align: center;
         }
 
-        .empty-icon {
-            font-size: 4rem;
-            opacity: 0.4;
+        .empty-icon-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: var(--radius-full);
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted-foreground);
+            margin-bottom: 4px;
         }
 
         .empty-state h2 {
-            font-size: 1.3rem;
+            font-size: 18px;
             font-weight: 700;
-            color: var(--text-muted);
+            color: var(--foreground);
+            letter-spacing: -0.01em;
         }
 
         .empty-state p {
-            font-size: 14px;
-            color: var(--text-dim);
-            max-width: 280px;
+            font-size: 13px;
+            color: var(--muted-foreground);
+            max-width: 320px;
+            line-height: 1.4;
         }
 
         .btn-start-recording {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-sm);
-            padding: 12px 24px;
-            font-size: 14px;
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 10px 20px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             margin-top: 8px;
             font-family: inherit;
-            transition: opacity 0.15s;
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-sm);
         }
 
-        .btn-start-recording:hover { opacity: 0.85; }
+        .btn-start-recording:hover {
+            background: var(--primary-hover);
+        }
+
+        @media (max-width: 600px) {
+            .app-header {
+                padding: 10px 16px;
+            }
+            .toolbar {
+                padding: 12px 16px;
+                gap: 8px;
+            }
+            .recordings-grid {
+                grid-template-columns: 1fr;
+                padding: 16px 16px 36px;
+            }
+        }
     </style>
 </head>
 <body>
     <header class="app-header">
-        <div class="logo">QuickShot</div>
-        <span class="page-title">/ History</span>
+        <div class="header-brand">
+            <div class="logo-wrap">
+                <img src="/assets/icn.png" width="22" height="22" alt="QuickShot">
+            </div>
+            <span class="logo">QuickShot</span>
+            <span class="qs-badge qs-badge-secondary page-title">History</span>
+        </div>
         <div class="header-actions">
-            <button class="btn-new-rec" id="new-rec-btn">+ New Recording</button>
+            <button class="qs-btn qs-btn-primary btn-new-rec" id="new-rec-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                New Recording
+            </button>
         </div>
     </header>
 
     <div class="toolbar">
         <div class="search-wrap">
-            <span class="search-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-            <input type="text" id="search-input" placeholder="Search recordings...">
+            <span class="search-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+            </span>
+            <input type="text" id="search-input" class="qs-input" placeholder="Search recordings by filename...">
         </div>
-        <select id="filter-type">
+        <select id="filter-type" class="qs-select">
             <option value="all">All Types</option>
             <option value="desktop">Screen</option>
             <option value="window">Window</option>
             <option value="tab">Tab</option>
         </select>
-        <select id="sort-order">
+        <select id="sort-order" class="qs-select">
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
         </select>
         <span class="count-badge" id="recording-count">—</span>
     </div>
 
-    <div class="recordings-grid" id="recordings-grid">
+    <main class="recordings-grid" id="recordings-grid">
         <div class="empty-state">
-            <div class="empty-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 8v4l3 3M6 6h12v12H6z"/></svg></div>
-            <h2>Loading...</h2>
+            <div class="empty-icon-wrap">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <h2>Loading recordings...</h2>
         </div>
-    </div>
+    </main>
 
-    <script src="history.js"></script>
+    <script type="module" src="history.js"></script>
 </body>
 </html>

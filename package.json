@@ -5,9 +5,11 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
-    "watch": "node build.mjs --watch"
+    "watch": "node build.mjs --watch",
+    "test": "node tests/run-ui-tests.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "playwright": "^1.64.1"
   }
 }

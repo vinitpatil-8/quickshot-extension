@@ -1,130 +1,166 @@
-<html>
-
+<!DOCTYPE html>
+<html lang="en">
 <head>
-	<link rel="stylesheet" href="popup.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickShot</title>
+  <link rel="stylesheet" href="../styles/theme.css">
+  <link rel="stylesheet" href="popup.css">
 </head>
-
 <body>
-	<div class="top">
-		<div class="head">
-			<img width="40px" height="40px" src="/assets/icn.png" alt="icon">
-			<p>QuickShot</p>
-		</div>
-		<button id="settingsBtn">
-			<svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-				width="20px" height="20px" viewBox="0 0 593.182 593.183" xml:space="preserve">
-				<g>
-					<g>
-						<path d="M19.903,229.236C7.391,243.692,0.5,262.183,0.5,281.302v30.58c0,19.119,6.891,37.61,19.403,52.066
-		c10.424,12.043,24.178,20.628,39.419,24.743c1.378,3.548,2.836,7.065,4.373,10.548c-7.868,13.688-11.525,29.485-10.379,45.373
-		c1.375,19.069,9.577,37.017,23.097,50.536l21.623,21.623c7.553,7.554,16.388,13.419,26.258,17.436
-		c9.57,3.894,19.667,5.867,30.01,5.867c14.087,0,27.627-3.634,39.654-10.58c3.479,1.534,6.992,2.99,10.535,4.367
-		c4.115,15.241,12.699,28.994,24.742,39.418c14.457,12.513,32.948,19.403,52.066,19.403h30.581
-		c19.119,0,37.609-6.891,52.066-19.403c12.043-10.424,20.627-24.178,24.742-39.418c3.543-1.377,7.055-2.833,10.535-4.367
-		c12.027,6.946,25.566,10.58,39.654,10.58c10.344,0,20.439-1.974,30.01-5.867c9.869-4.017,18.705-9.882,26.258-17.436
-		l21.623-21.624c13.52-13.519,21.723-31.467,23.098-50.536c1.145-15.888-2.512-31.685-10.379-45.372
-		c1.535-3.483,2.994-7.001,4.371-10.548c15.242-4.116,28.996-12.7,39.42-24.743c12.512-14.457,19.402-32.947,19.402-52.067v-30.58
-		c0-19.119-6.891-37.61-19.402-52.066c-10.424-12.043-24.178-20.627-39.42-24.743c-1.377-3.546-2.836-7.065-4.373-10.548
-		c7.869-13.688,11.525-29.485,10.381-45.373c-1.375-19.07-9.578-37.017-23.098-50.536l-21.623-21.624
-		c-7.553-7.553-16.389-13.419-26.258-17.435c-9.57-3.894-19.668-5.868-30.01-5.868c-14.088,0-27.627,3.634-39.654,10.58
-		c-3.479-1.534-6.992-2.99-10.535-4.367c-4.115-15.241-12.699-28.995-24.742-39.419C349.491,7.391,331,0.5,311.881,0.5h-30.58
-		c-19.119,0-37.611,6.891-52.067,19.403c-12.042,10.423-20.626,24.178-24.742,39.419c-3.543,1.377-7.056,2.833-10.535,4.367
-		c-12.027-6.946-25.567-10.58-39.653-10.58c-10.343,0-20.44,1.974-30.01,5.867c-9.871,4.016-18.705,9.882-26.259,17.435
-		L76.413,98.034c-13.52,13.52-21.722,31.467-23.097,50.537c-1.146,15.888,2.511,31.685,10.379,45.373
-		c-1.536,3.483-2.995,7-4.373,10.548C44.081,208.609,30.327,217.192,19.903,229.236z M296.592,169.902c70.303,0,127.295,56.992,127.295,127.296s-56.992,127.296-127.295,127.296
-		c-70.304,0-127.296-56.992-127.296-127.296S226.288,169.902,296.592,169.902z" />
-					</g>
-				</g>
-			</svg>
-		</button>
-	</div>
-	<div class="buttons">
-		<button id="screenshotBtn" class="tooltip" aria-label="Screenshot">
-			<svg width="28px" height="28px" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg"
-				xmlns:xlink="http://www.w3.org/1999/xlink">
-				<title>screenshot</title>
-				<g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-					<g id="drop" fill="#ffffff" transform="translate(42.666667, 42.666667)">
-						<path
-							d="M106.666667,7.10542736e-15 L106.666667,64 L362.666667,64 L362.666667,320 L426.666667,320 L426.666667,362.666667 L362.666667,362.666667 L362.666667,426.666667 L320,426.666667 L320,362.666667 L64,362.666667 L64,7.10542736e-15 L106.666667,7.10542736e-15 Z M166.336,232.64 L106.666,296.422 L106.666667,320 L320,320 L320,308.725 L274.432,263.168 L235.659405,301.959634 L166.336,232.64 Z M320,106.666667 L106.666667,106.666667 L106.666,233.982 L165.332883,171.293333 L235.648,241.621333 L274.447284,202.831976 L320,248.385 L320,106.666667 Z M245.333333,128 C263.006445,128 277.333333,142.326888 277.333333,160 C277.333333,177.673112 263.006445,192 245.333333,192 C227.660221,192 213.333333,177.673112 213.333333,160 C213.333333,142.326888 227.660221,128 245.333333,128 Z M64,64 L64,106.666667 L7.10542736e-15,106.666667 L7.10542736e-15,64 L64,64 Z"
-							id="Combined-Shape">
+  <!-- Header bar -->
+  <header class="top">
+    <div class="head">
+      <div class="logo-wrap">
+        <img width="26" height="26" src="/assets/icn.png" alt="QuickShot Logo">
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">QuickShot</span>
+        <span class="qs-badge qs-badge-primary">Capture</span>
+      </div>
+    </div>
+    <button id="settingsBtn" class="qs-btn qs-btn-ghost qs-btn-icon" title="Settings" aria-label="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </button>
+  </header>
 
-						</path>
-					</g>
-				</g>
-			</svg>
-			<span class="tooltip-text">Screenshot</span>
-		</button>
+  <!-- Quick Action Cards -->
+  <main class="buttons">
+    <button id="screenshotBtn" class="action-card tooltip" aria-label="Screenshot">
+      <div class="action-icon-wrap action-icon-blue">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+      <div class="action-text">
+        <span class="action-title">Screenshot</span>
+        <span class="action-subtitle">Capture active tab</span>
+      </div>
+      <span class="action-shortcut">Ctrl+Shift+S</span>
+      <span class="tooltip-text">Capture Screenshot</span>
+    </button>
 
-		<button id="recordBtn" class="tooltip" aria-label="Screen Record">
-			<img src="/assets/screenrecord.svg" alt="Screen Record">
-			<span class="tooltip-text">Screen Record</span>
-		</button>
+    <button id="recordBtn" class="action-card tooltip" aria-label="Screen Record">
+      <div class="action-icon-wrap action-icon-red">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="23 7 16 12 23 17 23 7"/>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+      </div>
+      <div class="action-text">
+        <span class="action-title">Screen Record</span>
+        <span class="action-subtitle">Tab, Window, or Screen</span>
+      </div>
+      <span class="action-shortcut">Ctrl+Shift+R</span>
+      <span class="tooltip-text">Start Screen Recording</span>
+    </button>
 
-		<button id="historyBtn" class="tooltip" aria-label="Recording History">
-			<svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<path d="M12 8V12L14.5 14.5" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-				<path d="M3.05 11A9 9 0 1 1 4 16.5" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-				<path d="M3 7V11H7" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-			</svg>
-			<span class="tooltip-text">History</span>
-		</button>
-	</div>
-	<div class="settings">
-		<div class="backbtn">
-			<button id="gobackbtn">
-				<svg width="15px" height="15px" viewBox="0 0 56.326 56.326" xmlns="http://www.w3.org/2000/svg">
-					<path id="Path_14" data-name="Path 14"
-						d="M477.613,422.087l25.6-25.6a1.5,1.5,0,0,0-2.122-2.121l-25.6,25.6-25.6-25.6a1.5,1.5,0,1,0-2.121,2.121l25.6,25.6-25.6,25.6a1.5,1.5,0,0,0,2.121,2.122l25.6-25.6,25.6,25.6a1.5,1.5,0,0,0,2.122-2.122Z"
-						transform="translate(-447.328 -393.924)" />
-				</svg>
-			</button>
-		</div>
-		<div class="element">
-			<p class="sethead">Appearance</p>
-			<span class="uispan"><input type="radio" name="ui" id="system" checked>
-				<label for="system">System&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label></span>
-			<span class="uispan"><input type="radio" name="ui" id="dark">
-				<label for="dark">Dark Mode</label></span>
-			<span class="uispan"><input type="radio" name="ui" id="light">
-				<label for="light">Light Mode</label></span>
-		</div>
-		<div class="element second">
-			<p class="sethead">Screenshot</p>
-			<span class="uispan"><input type="checkbox" id="copyDirect">
-				<label for="copyDirect">Copy Automatically</label></span>
-			<span class="uispan"><input type="checkbox" id="downDirect">
-				<label for="downDirect">Auto Download</label></span>
-		</div>
-		<div class="element second">
-			<p class="sethead">Screen Record</p>
-			<span class="uispan"><input type="checkbox" id="recordSystemAudio" checked>
-				<label for="recordSystemAudio">System / Tab Audio</label></span>
-			<span class="uispan"><input type="checkbox" id="recordMic">
-				<label for="recordMic">Microphone</label></span>
-			<span class="uispan uispan-row">
-				<label for="videoQuality">Video Quality&nbsp;</label>
-				<select id="videoQuality" class="settings-select">
-					<option value="low">Low</option>
-					<option value="medium" selected>Medium</option>
-					<option value="high">High</option>
-				</select>
-			</span>
-			<span class="uispan uispan-row">
-				<label for="videoFps">FPS&nbsp;</label>
-				<select id="videoFps" class="settings-select">
-					<option value="30" selected>30 FPS</option>
-					<option value="60">60 FPS</option>
-				</select>
-			</span>
-		</div>
-		<div class="footer">
-			<p>Version 1.0.1</p>
-			<a href="https://github.com/vinitpatil-8/quickshot-extension" target="_blank">Github</a>
-		</div>
-	</div>
+    <button id="historyBtn" class="action-card tooltip" aria-label="Recording History">
+      <div class="action-icon-wrap action-icon-purple">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="action-text">
+        <span class="action-title">Recordings</span>
+        <span class="action-subtitle">View past captures</span>
+      </div>
+      <span class="action-arrow">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </span>
+      <span class="tooltip-text">View Recordings</span>
+    </button>
+  </main>
 
-	<script type="module" src="popup.js"></script>
+  <!-- Settings View -->
+  <section class="settings">
+    <div class="settings-header">
+      <button id="gobackbtn" class="qs-btn qs-btn-ghost qs-btn-icon backbtn" title="Back" aria-label="Back to main">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+      </button>
+      <h2 class="settings-title">Settings</h2>
+    </div>
+
+    <!-- Appearance Section -->
+    <div class="element">
+      <p class="sethead">Theme</p>
+      <div class="theme-segmented">
+        <label class="uispan theme-pill">
+          <input type="radio" name="ui" id="system" checked>
+          <span class="pill-label">System</span>
+        </label>
+        <label class="uispan theme-pill">
+          <input type="radio" name="ui" id="dark">
+          <span class="pill-label">Dark</span>
+        </label>
+        <label class="uispan theme-pill">
+          <input type="radio" name="ui" id="light">
+          <span class="pill-label">Light</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Screenshot Options -->
+    <div class="element second">
+      <p class="sethead">Screenshot Options</p>
+      <div class="settings-group">
+        <label class="uispan setting-row" for="copyDirect">
+          <span class="setting-label">Copy Automatically</span>
+          <input type="checkbox" id="copyDirect" class="qs-checkbox">
+        </label>
+        <label class="uispan setting-row" for="downDirect">
+          <span class="setting-label">Auto Download</span>
+          <input type="checkbox" id="downDirect" class="qs-checkbox">
+        </label>
+      </div>
+    </div>
+
+    <!-- Screen Record Options -->
+    <div class="element second">
+      <p class="sethead">Screen Recording</p>
+      <div class="settings-group">
+        <label class="uispan setting-row" for="recordSystemAudio">
+          <span class="setting-label">System / Tab Audio</span>
+          <input type="checkbox" id="recordSystemAudio" class="qs-checkbox" checked>
+        </label>
+        <label class="uispan setting-row" for="recordMic">
+          <span class="setting-label">Microphone Audio</span>
+          <input type="checkbox" id="recordMic" class="qs-checkbox">
+        </label>
+        <div class="uispan uispan-row setting-row">
+          <label for="videoQuality" class="setting-label">Video Quality</label>
+          <select id="videoQuality" class="settings-select qs-select">
+            <option value="low">Low (1 Mbps)</option>
+            <option value="medium" selected>Medium (2.5 Mbps)</option>
+            <option value="high">High (6 Mbps)</option>
+          </select>
+        </div>
+        <div class="uispan uispan-row setting-row">
+          <label for="videoFps" class="setting-label">Frame Rate</label>
+          <select id="videoFps" class="settings-select qs-select">
+            <option value="30" selected>30 FPS</option>
+            <option value="60">60 FPS</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span class="footer-version">QuickShot v1.0.1</span>
+      <a href="https://github.com/vinitpatil-8/quickshot-extension" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub Repository</a>
+    </footer>
+  </section>
+
+  <script type="module" src="popup.js"></script>
 </body>
-
 </html>
