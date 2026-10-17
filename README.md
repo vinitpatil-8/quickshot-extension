@@ -20,14 +20,21 @@
 
 ## Features
 
-* 📸 Select any area of the current webpage
-* 🌑 Dimmed overlay for precise selection
-* ✨ Live selection preview
-* 📋 Copy screenshots directly to your clipboard
-* 💾 Download screenshots as PNG
-* ❌ Press <kbd>Esc</kbd> anytime to cancel
-* ⚡ Lightweight and fast
-* 🔒 Works completely locally — no uploads or tracking
+-   📸 Select any area of the current webpage
+-   🌑 Dimmed overlay for precise selection
+-   ✨ Live selection preview
+-   📋 Copy screenshots directly to your clipboard
+-   💾 Download screenshots as PNG
+-   🎥 Record your screen
+-   ▶️ Preview recordings before saving or sharing them
+-   🗂️ Browse and manage saved recordings in history
+-   ⚙️ Customize settings (themes and automatic copy/download
+    options)
+-   🌗 Light and dark theme support
+-   ❌ Press `Esc` anytime to cancel
+    screenshot selection
+-   ⚡ Lightweight and fast
+-   🔒 Works locally (no uploads or tracking)
 
 ---
 
@@ -89,41 +96,30 @@ The built extension in `dist/` is self-contained — you don't need the source f
 
 ## Usage
 
-1. Click the **QuickShot** extension icon.
-2. Choose **Screenshot**.
-3. Drag to select the desired area.
-4. Release the mouse.
-5. Choose to:
+### Take a screenshot
 
-   * 📋 Copy to clipboard
-   * 💾 Download
-   * ❌ Cancel
+1.  Click the **QuickShot** extension icon.
+2.  Choose **Screenshot**.
+3.  Drag to select the area you want to capture.
+4.  Release the mouse.
+5.  Copy the screenshot to your clipboard, download it, or cancel.
 
----
+### Record your screen
 
-## Project Structure
+1.  Open QuickShot and choose **Record**.
+2.  Choose the available recording options and start recording.
+3.  Pause, resume, or stop the recording using the recorder controls.
+4.  Preview the result and download it when you're happy with it.
 
-```text
-quickshot/
-│
-├── manifest.json
-├── popup/
-│   ├── popup.html
-│   ├── popup.css
-│   └── popup.js
-│
-├── scripts/
-│   ├── content.js
-│   ├── background.js
-│   └── ...
-│
-├── assets/
-│   ├── banner.png
-│   ├── demo.gif
-│   └── icons/
-│
-└── README.md
-```
+### Manage recordings
+
+Open **History** to browse saved recordings, search and filter them, and
+use the available actions to preview, download, rename, or delete items.
+
+### Customize QuickShot
+
+Open **Settings** to adjust your preferences, including theme and
+automatic copy/download options.
 
 ---
 
@@ -140,16 +136,17 @@ quickshot/
 
 ## Roadmap
 
-* [x] Area selection
-* [x] Live selection preview
-* [x] Download screenshots
-* [x] Copy to clipboard
-* [x] Cancel with Escape
-- [x] Settings page
-- [x] Theme support
-* [ ] Screen recording
-* [ ] Annotation tools
-* [ ] MP4 Export
+-   [x] Area selection
+-   [x] Live selection preview
+-   [x] Download screenshots
+-   [x] Copy to clipboard
+-   [x] Cancel with Escape
+-   [x] Settings page
+-   [x] Theme support
+-   [x] Screen recording
+-   [x] Recording preview and history
+-   [ ] Annotation tools
+-   [ ] MP4 export
 
 ---
 
